@@ -2,19 +2,25 @@
 #
 #
 
+import logging
 import os
 from pathlib import Path
 from pprint import pprint
+import signal
+from types import FrameType
+from typing import Any, Coroutine
 
 from bale import (
 	Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment,
 	InlineKeyboardMarkup, InlineKeyboardButton,
 	MenuKeyboardMarkup, MenuKeyboardButton)
 
-from app_utils import ConfigureLogging, LoadLangs
+import app_utils
+from app_utils import ConfigureLogging
 from db import IDatabase
 from db.sqlite3 import SqliteDb
-from panels import GetAdminReply, GetNewcomerReply, RejectUnknownUser
+from panels import (GetAdminReply, GetCommandsReply, GetProductsReply,
+	GetUserPanelReply ,GetUnknownReply)
 
 
 # Bot-wide variables & contants =====================================
@@ -35,12 +41,26 @@ DB: IDatabase
 # Configuring the logger ============================================
 ConfigureLogging(APP_DIR / 'log.log')
 
-# Loading languages =================================================
-LANGS = LoadLangs(APP_DIR)
-"""A dictionary of all installed languages."""
-
 # Preparing the database ============================================
 DB = SqliteDb(APP_DIR / 'db.db3')
+
+
+def _DispatchCommand(
+		message: Message,
+		cmd: str | None,
+		) -> Coroutine[Any, Any, Message]:
+	commandParts = cmd.split()
+	commandParts[0] = commandParts[0].lower()
+	if commandParts[0] == app_utils.START_CMD:
+		return GetUserPanelReply(message)
+	elif commandParts[0] == app_utils.PRODUCTS_CMD:
+		return GetProductsReply(message)
+	elif commandParts[0] == app_utils.HELP_CMD:
+		return GetCommandsReply(message)
+	elif commandParts[0] == app_utils.ADMIN_CMD:
+		return GetAdminReply(message, ADMIN_IDS)
+	else:
+		return GetUnknownReply(message)
 
 # Creating & running the Bot ======================================== 
 happyEngBot = Bot(token=os.environ.get('BALE_HAPPY_ENG_BOT_TOKEN'))
@@ -59,31 +79,11 @@ async def on_message(message: Message):
 	print()
 	print('A sent message is received '.ljust(70, '='))
 	pprint(message)
-	# Rejecting unknown user...
-	if message.from_user is None:
-		await RejectUnknownUser(message)
-	# Checking for being newcomer...
-	elif message.from_user.id not in DB.GetAllUserIds():
-		await GetNewcomerReply(message, LANGS)
-	# Checking the prompt to access admin panel...
-	elif message.content is ADMIN_PRM:
-		await GetAdminReply(message, ADMIN_IDS)
-	elif message.content == '/start':
-		replyMarkup = InlineKeyboardMarkup()
-		replyMarkup.add(InlineKeyboardButton('مشاهده محصولات'), row=1)
-		replyMarkup.add(InlineKeyboardButton('من'), row=2)
-		replyMarkup.add(InlineKeyboardButton('تو'), row=2)
-		await message.reply(
-			'درودهای گرم ما بر شما از Happy English!!!',
-			components=replyMarkup)
-		if message.chat.is_group_chat:
-			# work when message sent in a group
-			await message.reply("It's is a special Hi for groups!")
-	elif message.contact == '/keys':
-		keyboard = MenuKeyboardMarkup()
-		keyboard.add(MenuKeyboardButton('من'), row=1)
-		keyboard.add(MenuKeyboardButton('تو'), row=2)
-		await message.reply('gf uhgu huhfgu', components=keyboard)
+	# Looking for empty or None messages...
+	if not message.content:
+		logging.warning('an empty or None message')
+		return
+	await _DispatchCommand(message, message.text)
 
 async def on_message_edit(message: Message) -> None:
 	print()
@@ -100,7 +100,10 @@ async def on_update(update: Update) -> None:
 async def on_callback(callback: CallbackQuery) -> None:
 	print()
 	print('A callback query is created '.ljust(70, '='))
-	pprint(callback)
+	if not callback.data:
+		logging.info('A callback with no data.')
+		return
+	await _DispatchCommand(callback.message, callback.data)
 
 @happyEngBot.event
 async def on_member_chat_join(
@@ -136,5 +139,16 @@ async def on_successful_payment(
 
 # See https://docs.python-bale-bot.ir/en/stable/event.html
 # to get more information about events!
+
+
+def CloseBot(signal: int, frame: FrameType) -> None:
+	import asyncio
+	async def _CloseBot() -> None:
+		DB.Close()
+		await happyEngBot.close()
+	print('Closing the Bot...')
+	asyncio.create_task(_CloseBot())
+
+signal.signal(signal.SIGINT, CloseBot)
 
 happyEngBot.run()

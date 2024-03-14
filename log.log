@@ -1,138 +1,591 @@
 ============================================================
 Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
 Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 18:26:50
+Wednesday March 13, 2024, 20:38:44
+
+
+
+[2024-03-13  20:45:55]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [WinError 121] The semaphore timeout period has expired
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [WinError 121] The semaphore timeout period has expired
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 11:00:03
+
+
+
+[2024-03-14  11:21:05]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [WinError 121] The semaphore timeout period has expired
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [WinError 121] The semaphore timeout period has expired
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 11:36:16
 
 
 
 ============================================================
 Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
 Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 18:28:09
+Thursday March 14, 2024, 11:37:50
 
 
 
-[2024-03-12  18:29:12]  bot  MainThread
-   ERROR: Exception in on_message Ignored
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 11:55:20
+
+
+
+[2024-03-14  11:55:30]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 11:56:26
+
+
+
+[2024-03-14  11:56:33]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 11:59:08
+
+
+
+[2024-03-14  11:59:11]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 12:01:49
+
+
+
+[2024-03-14  12:02:08]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 12:02:43
+
+
+
+[2024-03-14  12:02:50]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 12:03:55
+
+
+
+[2024-03-14  12:03:58]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 12:28:12
+
+
+
+[2024-03-14  13:04:03]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 13:04:18
+
+
+
+[2024-03-14  13:04:45]  bot  MainThread
+   ERROR: Exception in on_callback Ignored
 
 Traceback (most recent call last):
   File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 274, in run_event
     await core(*args, **kwargs)
-  File "d:\Mohsen\Programming\Python\happy-eng-bot\main.py", line 62, in on_message
-    await GetNewcomerReply()
-          ^^^^^^^^^^^^^^^^^^
-TypeError: GetNewcomerReply() missing 2 required positional arguments: 'message' and 'langs'
-============================================================
-Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
-Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 19:14:48
-
-
-
-[2024-03-12  19:15:02]  bot  MainThread
-   ERROR: Exception in on_message Ignored
+  File "d:\Mohsen\Programming\Python\happy-eng-bot\main.py", line 97, in on_callback
+    elif callback.data == app_utils.HELP_CMD_1:
+                          ^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'app_utils' has no attribute 'HELP_CMD_1'. Did you mean: 'HELP_CMD'?
+[2024-03-14  13:04:54]  bot  MainThread
+   ERROR: Exception in on_callback Ignored
 
 Traceback (most recent call last):
   File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 274, in run_event
     await core(*args, **kwargs)
-  File "d:\Mohsen\Programming\Python\happy-eng-bot\main.py", line 63, in on_message
-    await GetNewcomerReply(message, LANGS)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "d:\Mohsen\Programming\Python\happy-eng-bot\panels.py", line 34, in GetNewcomerReply
-    text = '\n'.join(langs[lang].strings['SELECT_LANG'] for lang in langs)
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: 'NoneType' object is not iterable
-============================================================
-Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
-Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 19:16:20
-
-
-
-============================================================
-Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
-Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 19:17:19
-
-
-
-============================================================
-Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
-Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 19:21:29
-
-
-
-============================================================
-Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
-Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 19:27:23
-
-
-
-============================================================
-Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
-Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 19:35:33
-
-
-
-[2024-03-12  19:35:43]  bot  MainThread
-   ERROR: Exception in on_message Ignored
+  File "d:\Mohsen\Programming\Python\happy-eng-bot\main.py", line 97, in on_callback
+    elif callback.data == app_utils.HELP_CMD_1:
+                          ^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'app_utils' has no attribute 'HELP_CMD_1'. Did you mean: 'HELP_CMD'?
+[2024-03-14  13:05:07]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
 
 Traceback (most recent call last):
-  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 274, in run_event
-    await core(*args, **kwargs)
-  File "d:\Mohsen\Programming\Python\happy-eng-bot\main.py", line 63, in on_message
-    await GetNewcomerReply(message, LANGS)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "d:\Mohsen\Programming\Python\happy-eng-bot\panels.py", line 34, in GetNewcomerReply
-    text = '\n'.join(langs[lang].messages['SELECT_LANG'] for lang in langs)
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: 'NoneType' object is not iterable
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
 ============================================================
 Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
 Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 19:36:33
+Thursday March 14, 2024, 13:05:12
 
 
 
+[2024-03-14  13:31:15]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
 ============================================================
 Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
 Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 19:37:54
+Thursday March 14, 2024, 19:11:04
 
 
 
+[2024-03-14  19:27:45]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
 ============================================================
 Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
 Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 19:40:32
+Thursday March 14, 2024, 19:28:10
 
 
 
+[2024-03-14  19:30:43]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
 ============================================================
 Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
 Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 19:41:27
+Thursday March 14, 2024, 19:30:57
 
 
 
-============================================================
-Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
-Python interpreter: CPython 3.12.2
-Tuesday March 12, 2024, 19:44:59
-
-
-
-============================================================
-Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
-Python interpreter: CPython 3.12.2
-Wednesday March 13, 2024, 10:14:10
-
-
-
-[2024-03-13  10:43:47]  updater  MainThread
+[2024-03-14  19:57:13]  updater  MainThread
    ERROR: Exception happened when polling for updates.
 
 Traceback (most recent call last):
@@ -166,3 +619,156 @@ Traceback (most recent call last):
   File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 157, in request
     raise HTTPException(error)
 bale.error.HTTPException
+[2024-03-14  20:07:53]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 20:08:09
+
+
+
+[2024-03-14  20:19:42]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+============================================================
+Operating system: Windows 10(version: 10.0.19043) ('64bit', 'WindowsPE')
+Python interpreter: CPython 3.12.2
+Thursday March 14, 2024, 20:30:28
+
+
+
+[2024-03-14  20:44:41]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 960, in start
+    with self._timer:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\helpers.py", line 735, in __exit__
+    raise asyncio.TimeoutError from None
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 157, in request
+    raise HTTPException(error)
+bale.error.HTTPException
+[2024-03-14  20:57:00]  updater  MainThread
+   ERROR: Exception happened when polling for updates.
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 123, in request
+    async with self.__session.request(method=method, url=url, **kwargs) as original_response:
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 1187, in __aenter__
+    self._resp = await self._coro
+                 ^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client.py", line 601, in _request
+    await resp.start(conn)
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\client_reqrep.py", line 965, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\aiohttp\streams.py", line 622, in read
+    await self._waiter
+aiohttp.client_exceptions.ClientOSError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 104, in _network_loop_retry
+    if not await action_cb():
+           ^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 80, in action_getupdates
+    raise exc
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\updater.py", line 78, in action_getupdates
+    updates = await self.bot.get_updates(offset=self._last_offset)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\bot.py", line 1936, in get_updates
+    response = await self._http.get_updates(params=handle_request_param(dict(offset=offset, limit=limit)))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Mohsen\Programming\Python\happy-eng-bot\Lib\site-packages\bale\request\http.py", line 153, in request
+    raise BaleError(str(error))
+bale.error.BaleError: [Errno 1] [SSL: APPLICATION_DATA_AFTER_CLOSE_NOTIFY] application data after close notify (_ssl.c:2685)

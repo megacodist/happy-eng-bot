@@ -16,7 +16,17 @@ class IDatabase(ABC):
         pass
 
     @abstractmethod
+    def Close(self) -> None:
+        """Closes the database."""
+        pass
+
+    @abstractmethod
     def GetAllUserIds(self) -> tuple[int, ...]:
         """Returns a tuple of all user IDs in the database."""
+        pass
+
+    @abstractmethod
+    def DoesIdExist(self, __id: int) -> bool:
+        """Specifies whether an ID exists in the database or not."""
         pass
 

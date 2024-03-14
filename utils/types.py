@@ -3,14 +3,7 @@
 #
 """This module exposes the specialized types for this Bot:
 
-1. `Strings`
+1.
 """
 
-from dataclasses import dataclass
 
-
-@dataclass
-class Language:
-    """Represent a language for the GUI."""
-    names: dict[str, str]
-    messages: dict[str, str]

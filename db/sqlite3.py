@@ -16,8 +16,14 @@ class SqliteDb(IDatabase):
         self._conn = sqlite3.connect(db_file)
         """The connection object of the database."""
     
+    def Close(self) -> None:
+        self._conn.close()
+    
     def GetAllUserIds(self) -> tuple[int, ...]:
         sql = "SELECT ID FROM Users"
         cur = self._conn.cursor()
         cur = cur.execute(sql)
         return tuple(cur)
+    
+    def DoesIdExist(self, __id: int) -> bool:
+        return __id in self.GetAllUserIds()

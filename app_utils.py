@@ -12,7 +12,11 @@ languages.
 import logging
 from os import PathLike
 
-from utils.types import Language
+
+HELP_CMD = '/help'
+START_CMD = '/start'
+PRODUCTS_CMD = '/products'
+ADMIN_CMD = '/admin'
 
 
 def ConfigureLogging(filename: PathLike) -> None:
@@ -50,33 +54,3 @@ def ConfigureLogging(filename: PathLike) -> None:
         datefmt='%Y-%m-%d  %H:%M:%S')
     loggerFileStream.setFormatter(loggerFormatter)
     logger.addHandler(loggerFileStream)
-
-
-def LoadLangs(app_dir: PathLike) -> dict[str, Language]:
-    """Loads all installed languages for GUI and returns them all as
-    a dictionary. For example to get English language interface,
-    use `result['en']`.
-    """
-    # Declaring variables -----------------------------
-    from utils.funcs import PathLikeToPath
-    from importlib import import_module
-    from types import ModuleType
-    langModule: ModuleType
-    # Functioning -------------------------------------
-    langs: dict[str, Language] = {}
-    for file in PathLikeToPath(app_dir / 'langs').glob('*.py'):
-        langModule = import_module(f'langs.{file.stem}')
-        moduleItems = dir(langModule)
-        # Checking existence of 'names' & 'strings'...
-        if not set(['names', 'messages']).issubset(set(moduleItems)):
-            continue
-        # Checking 'names' type...
-        langNames = getattr(langModule, 'names')
-        if not isinstance(langNames, dict):
-            continue
-        # Checking 'strings' type...
-        langStrings = getattr(langModule, 'messages')
-        if not isinstance(langStrings, dict):
-            continue
-        langs[file.stem] = Language(langNames, langStrings)
-    return langs
