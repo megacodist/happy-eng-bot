@@ -11,16 +11,14 @@ from types import FrameType
 from typing import Any, Coroutine
 
 from bale import (
-	Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment,
-	InlineKeyboardMarkup, InlineKeyboardButton,
-	MenuKeyboardMarkup, MenuKeyboardButton)
+	Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment)
 
-import app_utils
 from app_utils import ConfigureLogging
 from db import IDatabase
 from db.sqlite3 import SqliteDb
-from panels import (GetAdminReply, GetCommandsReply, GetProductsReply,
+from panels import (GetAdminReply, GetHelpReply, GetProductsReply,
 	GetUserPanelReply ,GetUnknownReply)
+from utils.types import Commands
 
 
 # Bot-wide variables & contants =====================================
@@ -31,9 +29,6 @@ ADMIN_IDS: tuple[int, ...] = (
 	1553661656,   # Mohsen's ID in bale.ai
 	1141453153)  # Hossein's ID in bale.ai
 """A tuple of ID's of admin users."""
-
-ADMIN_PRM = '/admin'
-"""The prompt for admin panel."""
 
 DB: IDatabase
 """The database."""
@@ -51,14 +46,18 @@ def _DispatchCommand(
 		) -> Coroutine[Any, Any, Message]:
 	commandParts = cmd.split()
 	commandParts[0] = commandParts[0].lower()
-	if commandParts[0] == app_utils.START_CMD:
-		return GetUserPanelReply(message)
-	elif commandParts[0] == app_utils.PRODUCTS_CMD:
-		return GetProductsReply(message)
-	elif commandParts[0] == app_utils.HELP_CMD:
-		return GetCommandsReply(message)
-	elif commandParts[0] == app_utils.ADMIN_CMD:
+	if commandParts[0] == Commands.ADMIN.value:
 		return GetAdminReply(message, ADMIN_IDS)
+	elif commandParts[0] == Commands.HELP.value:
+		return GetHelpReply(message)
+	elif commandParts[0] == Commands.MY_COURSES.name:
+		pass
+	elif commandParts[0] == Commands.PRODUCTS.value:
+		return GetProductsReply(message)
+	elif commandParts[0] == Commands.SIGN_IN.name:
+		pass
+	elif commandParts[0] == Commands.START.value:
+		return GetUserPanelReply(message, DB, ADMIN_IDS)
 	else:
 		return GetUnknownReply(message)
 
@@ -77,7 +76,7 @@ async def on_ready():
 @happyEngBot.event
 async def on_message(message: Message):
 	print()
-	print('A sent message is received '.ljust(70, '='))
+	print('A message is received '.ljust(70, '='))
 	pprint(message)
 	# Looking for empty or None messages...
 	if not message.content:
@@ -87,7 +86,7 @@ async def on_message(message: Message):
 
 async def on_message_edit(message: Message) -> None:
 	print()
-	print('A sent message is edited '.ljust(70, '='))
+	print('A message is edited '.ljust(70, '='))
 	pprint(message)
 
 @happyEngBot.event
@@ -100,6 +99,7 @@ async def on_update(update: Update) -> None:
 async def on_callback(callback: CallbackQuery) -> None:
 	print()
 	print('A callback query is created '.ljust(70, '='))
+	print('User:', callback.from_user)
 	if not callback.data:
 		logging.info('A callback with no data.')
 		return

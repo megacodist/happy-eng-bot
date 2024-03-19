@@ -1,4 +1,6 @@
+import logging
 import os
+
 
 def foo(bar: list = []) -> None:
     print(locals())
@@ -7,6 +9,12 @@ def foo(bar: list = []) -> None:
     print('-' * 10)
  
 if __name__ == '__main__':
+    logger = logging.getLogger()
+    fileHandler = logging.FileHandler(
+        filename=r'd:\bjbd',
+        mode='a')
+    fileHandler.setLevel(logging.INFO)
+    consoleHandler = logging.StreamHandler()
     baz = []
     foo()
     foo()

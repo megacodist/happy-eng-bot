@@ -13,12 +13,6 @@ import logging
 from os import PathLike
 
 
-HELP_CMD = '/help'
-START_CMD = '/start'
-PRODUCTS_CMD = '/products'
-ADMIN_CMD = '/admin'
-
-
 def ConfigureLogging(filename: PathLike) -> None:
     """Configures the logger for saving events to a file."""
     import platform
@@ -29,8 +23,8 @@ def ConfigureLogging(filename: PathLike) -> None:
 
     # Logging platform information...
     loggerFileStream = logging.FileHandler(filename, 'a')
-    loggerFormatter = logging.Formatter('%(message)s')
-    loggerFileStream.setFormatter(loggerFormatter)
+    msgOnlyFormatter = logging.Formatter('%(message)s')
+    loggerFileStream.setFormatter(msgOnlyFormatter)
     logger.addHandler(loggerFileStream)
 
     logging.info('=' * 60)
@@ -47,10 +41,14 @@ def ConfigureLogging(filename: PathLike) -> None:
     # Logging program events...
     logger.removeHandler(loggerFileStream)
     loggerFileStream = logging.FileHandler(filename, 'a')
-    loggerFormatter = logging.Formatter(
+    detailedFormatter = logging.Formatter(
         fmt=(
             '[%(asctime)s]  %(module)s  %(threadName)s'
             + '\n%(levelname)8s: %(message)s\n\n'),
         datefmt='%Y-%m-%d  %H:%M:%S')
-    loggerFileStream.setFormatter(loggerFormatter)
+    loggerFileStream.setFormatter(detailedFormatter)
     logger.addHandler(loggerFileStream)
+    # Setting debugging logger...
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(detailedFormatter)
+    consoleHandler.setLevel(logging.DEBUG)

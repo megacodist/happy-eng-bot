@@ -20,7 +20,7 @@ class SqliteDb(IDatabase):
         self._conn.close()
     
     def GetAllUserIds(self) -> tuple[int, ...]:
-        sql = "SELECT ID FROM Users"
+        sql = "SELECT user_id FROM users"
         cur = self._conn.cursor()
         cur = cur.execute(sql)
         return tuple(cur)

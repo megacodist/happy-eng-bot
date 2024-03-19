@@ -12,15 +12,36 @@ USER = 'کاربر'
 
 ADMIN = 'مدیر'
 
+COMMANDS = 'دستورات'
+
 PANEL = 'صفحه'
+
+ADMIN_PANEL = f'{PANEL} {ADMIN}'
+"""The title of the Admin Panel."""
+
+ADMIN_PANEL_NO_ACCESS = f'شما به {PANEL} {ADMIN} دسترسی ندارید'
+"""The message to show when a user does not have access to the
+Admin Panel.
+"""
 
 HELP = 'راهنمایی'
 
-START = f'{PANEL} من'
+HELP_CMD_INTRO = f'{HELP}: برای نمایش همین {PANEL}'
+
+MY_COURSES = 'دوره های من'
 
 PRODUCTS = 'محصولات'
 
-COMMANDS = 'دستورات'
+PRODUCTS_CMD_INTRO = f'{PRODUCTS}: نمایش یک لیست از تمام {PRODUCTS}'
+"""The introduction of Products command."""
+
+SIGN_IN = 'ثبت نام'
+
+START = f'{PANEL} من'
+"""The title of the user panel."""
+
+START_CMD_INTRO = f'برای دسترسی به {PANEL} شما'
+"""The introduction of Start command."""
 
 OBJECTIVES = 'هدف ما آموزش سریع زبان است'
 
@@ -30,14 +51,9 @@ REJECT_UNKNOWN = f'متاسفانه {USER} شما تشخیص داده نشد. ا
 
 SELECT_LANG = 'لطفا زبان خود را انتخاب کنید.'
 
-ADMIN_PANEL_NO_ACCESS = f'شما به {PANEL} {ADMIN} دسترسی ندارید'
-
 UNKNOWN_COMMAND = "'{}' یک دستور نیست. برای مشاهده فهرست دستورات دکمه زیر را بزنید."
 
-HELP_CMD_INFO = f'{HELP}: برای نمایش همین {PANEL}'
+UNKNOWN_USER = f'{USER} شما ناشناس است'
+"""The message to show when the user object is `None`."""
 
 COMMANDS_CMD_INFO = F'{COMMANDS}: برای نامیش خلاصه همه {COMMANDS}'
-
-START_CMD_INFO = f'برای دسترسی به {PANEL} شما'
-
-PROCUDTS_CMD_INFO = f'{PRODUCTS}: نمایش یک لیست از تمام {PRODUCTS}'
