@@ -7,6 +7,7 @@
 """
 
 import enum
+from typing import Any
 
 
 class Commands(enum.Enum):
@@ -19,3 +20,13 @@ class Commands(enum.Enum):
     PRODUCTS = '/products'
     SIGN_IN = '/signin'
     START = '/start'
+
+
+class UserData:
+    def __init__(self) -> None:
+        pass
+
+
+class Users:
+    def __init__(self) -> None:
+        self._users: dict[int, Any] = {}
