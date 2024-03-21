@@ -67,17 +67,16 @@ happyEngBot = Bot(token=os.environ.get('BALE_HAPPY_ENG_BOT_TOKEN'))
 
 @happyEngBot.event
 async def on_before_ready() -> None:
-	print("'on_before_ready' event is raised.")
+	logging.debug("'on_before_ready' event is raised.")
 
 @happyEngBot.event
 async def on_ready():
-	print(happyEngBot.user.username, "is ready to respond!")
+	logging.debug(f"{happyEngBot.user.username} is ready to respond!")
 
 @happyEngBot.event
 async def on_message(message: Message):
-	print()
-	print('A message is received '.ljust(70, '='))
-	pprint(message)
+	logging.debug('A message is received '.ljust(70, '='))
+	logging.debug(message)
 	# Looking for empty or None messages...
 	if not message.content:
 		logging.warning('an empty or None message')
@@ -85,21 +84,18 @@ async def on_message(message: Message):
 	await _DispatchCommand(message, message.text)
 
 async def on_message_edit(message: Message) -> None:
-	print()
-	print('A message is edited '.ljust(70, '='))
-	pprint(message)
+	logging.debug('A message is edited '.ljust(70, '='))
+	logging.debug(message)
 
 @happyEngBot.event
 async def on_update(update: Update) -> None:
-	print()
-	print('An update is received from “Bale” servers '.ljust(70, '='))
-	pprint(update)
+	logging.debug('An update is received from “Bale” servers '.ljust(70, '='))
+	logging.debug(update)
 
 @happyEngBot.event
 async def on_callback(callback: CallbackQuery) -> None:
-	print()
-	print('A callback query is created '.ljust(70, '='))
-	print('User:', callback.from_user)
+	logging.debug('A callback query is created '.ljust(70, '='))
+	logging.debug(f'User: {callback.from_user}')
 	if not callback.data:
 		logging.info('A callback with no data.')
 		return
@@ -111,11 +107,10 @@ async def on_member_chat_join(
 		chat: Chat,
 		user: User
 		) -> None:
-	print()
-	print('A user has been added to a chat '.ljust(70, '='))
-	pprint(message)
-	pprint(chat)
-	pprint(user)
+	logging.debug('A user has been added to a chat '.ljust(70, '='))
+	logging.debug(message)
+	logging.debug(chat)
+	logging.debug(user)
 
 @happyEngBot.event
 async def on_member_chat_leave(
@@ -123,19 +118,17 @@ async def on_member_chat_leave(
 		chat: Chat,
 		user: User
 		) -> None:
-	print()
-	print('A user has left a chat '.ljust(70, '='))
-	pprint(message)
-	pprint(chat)
-	pprint(user)
+	logging.debug('A user has left a chat '.ljust(70, '='))
+	logging.debug(message)
+	logging.debug(chat)
+	logging.debug(user)
 
 @happyEngBot.event
 async def on_successful_payment(
 		payment: SuccessfulPayment,
 		) -> None:
-	print()
-	print('A successful payment '.ljust(70, '='))
-	pprint(payment)
+	logging.debug('A successful payment '.ljust(70, '='))
+	logging.debug(payment)
 
 # See https://docs.python-bale-bot.ir/en/stable/event.html
 # to get more information about events!
