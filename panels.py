@@ -9,14 +9,53 @@ from typing import Any, Coroutine
 
 from bale import (
     Message, InlineKeyboardMarkup, InlineKeyboardButton,
-    MenuKeyboardMarkup, MenuKeyboardButton)
+    MenuKeyboardMarkup, MenuKeyboardButton, User)
 
 from db import IDatabase
 import lang
-from utils.types import Commands
+from utils.types import AutoDelObj ,Commands
 
 
 COMING_SOON = 'Coming soon...'
+
+
+async def _GetSignInInfo(
+        message: Message,
+        obj: AutoDelObj,
+        text: str,
+        ) -> Coroutine[Any, Any, None]:
+    """Accepts and object and adds `text` as follwoing attributes in
+    consecutive calls:
+    1. `firstName`: the first name
+    2. `lastName`: the last (family) name
+    3. `email`: the e-mail address
+    4. `phone`: the phone no.
+    """
+    # Setting first name...
+    try:
+        obj.firstName
+    except AttributeError:
+        await message.reply(lang.ENTER_YOUR_FIRST_NAME)
+        obj.firstName = text
+        return
+    # Setting last name...
+    try:
+        obj.lastName
+    except AttributeError:
+        obj.lastName = text
+        return
+    # Setting last name...
+    try:
+        obj.email
+    except AttributeError:
+        obj.email = text
+        return
+    # Setting last name...
+    try:
+        obj.email
+    except AttributeError:
+        obj.email = text
+        return
 
 
 def _GetCommandInfoButton(
@@ -40,14 +79,20 @@ def _GetCommandInfoButton(
     return text
 
 
-def GetUnknownReply(
+def GetUnexCommandReply(
         message: Message | None,
         ) -> Coroutine[Any, Any, Message]:
-    """Gets the suitable response for an unknown command."""
-    text = lang.UNKNOWN_COMMAND.format(message.text)
+    """Gets the suitable response for an unexpected command."""
+    text = lang.UNEX_CMD.format(message.text)
     buttons = InlineKeyboardMarkup()
     _GetCommandInfoButton(Commands.HELP ,text, buttons)
     return message.reply(text, components=buttons)
+
+
+def GetUnexDataReply(
+        message: Message | None,
+        ) -> Coroutine[Any, Any, Message]:
+    return message.reply(lang.UNEX_DATA)
 
 
 def GetAdminReply(
@@ -68,6 +113,14 @@ def GetAdminReply(
         return message.reply(text)
 
 
+def GetSigninReply(
+        message: Message | None,
+        user: User,
+        admin_ids: tuple[int, ...]
+        ) -> Coroutine[Any, Any, Message]:
+    pass
+
+
 def GetHelpReply(
         message: Message | None,
         ) -> Coroutine[Any, Any, Message]:
@@ -80,8 +133,8 @@ def GetHelpReply(
     text += f'\n\n{Commands.START.value}'
     text = _GetCommandInfoButton(Commands.START, text, buttons)
     # Products command...
-    text += f'\n\n{Commands.PRODUCTS.value}'
-    text = _GetCommandInfoButton(Commands.PRODUCTS, text, buttons)
+    text += f'\n\n{Commands.SHOWCASE.value}'
+    text = _GetCommandInfoButton(Commands.SHOWCASE, text, buttons)
     return message.reply(text, components=buttons)
 
 

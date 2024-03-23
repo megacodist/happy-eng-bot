@@ -37,6 +37,8 @@ PRODUCTS_CMD_INTRO = f'{PRODUCTS}: نمایش یک لیست از تمام {PRODU
 
 SIGN_IN = 'ثبت نام'
 
+ENTER_YOUR_FIRST_NAME = 'لطفا نام کوچک خود را وارد کنید:'
+
 START = f'{PANEL} من'
 """The title of the user panel."""
 
@@ -51,9 +53,11 @@ REJECT_UNKNOWN = f'متاسفانه {USER} شما تشخیص داده نشد. ا
 
 SELECT_LANG = 'لطفا زبان خود را انتخاب کنید.'
 
-UNKNOWN_COMMAND = "'{}' یک دستور نیست. برای مشاهده فهرست دستورات دکمه زیر را بزنید."
+UNEX_CMD = "'{}' یک دستور نیست. برای مشاهده فهرست دستورات دکمه زیر را بزنید."
 
 UNKNOWN_USER = f'{USER} شما ناشناس است'
 """The message to show when the user object is `None`."""
 
 COMMANDS_CMD_INFO = F'{COMMANDS}: برای نامیش خلاصه همه {COMMANDS}'
+
+UNEX_DATA = 'شما مجاز به وارد کردن اطلاعات نیستید. اگر در میانه فرآیندی بودید، از ابتدا آن را انجام دهید.'
