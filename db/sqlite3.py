@@ -17,6 +17,10 @@ class SqliteDb(IDatabase):
         """The connection object of the database."""
     
     def Close(self) -> None:
+<<<<<<< HEAD
+=======
+        """Closes the database."""
+>>>>>>> 5ec94ceeb00bd7ab9de9d082784de16ee8418c53
         self._conn.close()
     
     def GetAllUserIds(self) -> tuple[int, ...]:
