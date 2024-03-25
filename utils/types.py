@@ -98,6 +98,19 @@ class SDelPool:
             self._timers[key] = None
 
 
+class AbsOperation(ABC):
+    """Abstract base class for operations in the Bot."""
+    @abstractmethod
+    def ReplyText(self, text: str) -> Coroutine[Any, Any, Message]:
+        """Replies the provided text."""
+        pass
+
+    @abstractmethod
+    def ReplyCallback(self, cb: str) -> Coroutine[Any, Any, MemoryError]:
+        """Replies the callback."""
+        pass
+
+
 class AutoDelObj:
     _POLLING_CANCEL_DELAY = 0.1
     """The time interval at which to poll for deletion cancelation."""

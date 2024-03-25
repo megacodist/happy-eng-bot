@@ -5,7 +5,6 @@
 import logging
 import os
 from pathlib import Path
-from pprint import pprint
 import signal
 from types import FrameType
 from typing import Any, Callable, Coroutine
@@ -17,7 +16,8 @@ from app_utils import ConfigureLogging
 from db import IDatabase
 from db.sqlite3 import SqliteDb
 import lang
-from panels import (GetAdminReply, GetHelpReply, GetProductsReply, GetUnexDataReply,
+from panels import (
+	GetAdminReply, GetHelpReply, GetProductsReply, GetUnexDataReply,
 	GetUserPanelReply ,GetUnexCommandReply)
 from utils.types import Commands, ID, UserData
 
@@ -54,7 +54,7 @@ ConfigureLogging(APP_DIR / 'log.log')
 DB = SqliteDb(APP_DIR / 'db.db3')
 
 
-def _DispatchTextInput(
+def _DispatchCmd(
 		message: Message,
 		user: User,
 		cmd: str | None,
@@ -74,7 +74,8 @@ def _DispatchTextInput(
 	elif commandParts[0] == Commands.START.value:
 		return GetUserPanelReply(message, DB, ADMIN_IDS)
 	else:
-		return GetUnknownReply(message)
+		return GetUnexDataReply(message)
+
 
 # Creating & running the Bot ======================================== 
 happyEngBot = Bot(token=os.environ.get('BALE_HAPPY_ENG_BOT_TOKEN'))
@@ -96,7 +97,7 @@ async def on_message(message: Message):
 	if not message.content:
 		logging.warning('an empty or None message')
 		return
-	await _DispatchTextInput(message, message.from_user, message.text)
+	await _DispatchCmd(message, message.from_user, message.text)
 
 @happyEngBot.event
 async def on_message_edit(message: Message) -> None:
@@ -115,7 +116,7 @@ async def on_callback(callback: CallbackQuery) -> None:
 	if not callback.data:
 		logging.info('A callback with no data.')
 		return
-	await _DispatchTextInput(
+	await _DispatchCmd(
 		callback.message,
 		callback.from_user,
 		callback.data)
@@ -163,4 +164,7 @@ def CloseBot(signal: int, frame: FrameType) -> None:
 
 signal.signal(signal.SIGINT, CloseBot)
 
-happyEngBot.run()
+try:
+	happyEngBot.run()
+finally:
+	DB.Close()
