@@ -13,7 +13,7 @@ from bale import (
 
 from db import IDatabase
 import lang
-from utils.types import AutoDelObj ,Commands
+from utils.types import AbsOperation, AutoDelObj, Commands, SDelPool
 
 
 COMING_SOON = 'Coming soon...'
@@ -117,7 +117,9 @@ def GetAdminReply(
 def GetSigninReply(
         message: Message | None,
         user: User,
-        admin_ids: tuple[int, ...]
+        admin_ids: tuple[int, ...],
+        db: IDatabase,
+        operations: SDelPool[AbsOperation],
         ) -> Coroutine[Any, Any, Message]:
     pass
 

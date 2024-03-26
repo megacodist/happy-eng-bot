@@ -9,13 +9,14 @@
 from abc import ABC, abstractmethod
 from asyncio import sleep, TimerHandle
 import enum
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar
 import logging
 from typing import Any, Callable, Coroutine, TypeVar
 
 from bale import Message
 
 from db import IDatabase
+import lang
 
 
 ID = int
@@ -36,25 +37,39 @@ class Commands(enum.Enum):
     START = '/start'
 
 
+class InputType(enum.IntEnum):
+    """Specifies the types of input the end user can enter."""
+    TEXT = 0
+    CALLBACK = 1
+
+
 _SDelType = TypeVar('_SDelType')
-class SDelPool:
+"""The type of member objects inside of an `SDelPool` object."""
+
+class SDelPool(Generic[_SDelType]):
     """
     ### Deletion-scheduled pool of objects
 
-    An object of this class is a pool of objects accessible via keys.
-    Elements are scheduled for deletion after each access and get
-    deleted after a specified amount of time. This scheduling happens
-    on `asyncio`.
+    An object of this class is a pool of member objects accessible via
+    keys. Memeber objects are scheduled for deletion after each access
+    and get deleted after a specified amount of time if they do not access
+    any more. This scheduling happens on `asyncio`.
 
     #### Operators:
     1. Getting an item with a key (`a = sdelPool[key]`)
     2. Setting an item with a key (`sdelPool[key[key] = a`)
     3. Deleting an item with a key (`del sdelPool[key]`)
     """
-    def __init__(self) -> None:
+    def __init__(self, id: ID) -> None:
+        """Initializes a new instance of this type with the folowing:
+
+        * `id`: the ID of the user.
+        """
         from asyncio import TimerHandle
         self._DEL_TIMINT = 3_600
         """The time interval for deletion in seconds."""
+        self._id = id
+        """The ID of the user who initiate the operation."""
         self._items: dict[ID, _SDelType] = {}
         self._timers: dict[ID, TimerHandle] = {}
     
@@ -99,78 +114,102 @@ class SDelPool:
 
 
 class AbsOperation(ABC):
-    """Abstract base class for operations in the Bot."""
+    """Abstract base class for operations in the Bot. Objects of this
+    type supports the followings:
+
+    1. hash protocol
+    2. equality comparison
+    """
+    _nHash = 0
+    """This attribute is used to produce unique hash in
+    `GetUniqueHash` class method"""
+
+    @classmethod
+    def GetUniqueHash(cls) -> int:
+        """Produces a unique hash. This uniqueness is guaranteed among
+        all instances of this class.
+        """
+        hash_ = cls._nHash
+        cls._nHash += 1
+        if cls._nHash > 0xff_ff_ff_ff:
+            cls._nHash = 0
+        return hash_
+    
+    def __init__(self) -> None:
+        self._hash = AbsOperation.GetUniqueHash()
+        """The hash of this object."""
+    
+    def __hash__(self) -> int:
+        return self._hash
+
+    def __eq__(self, __obj, /) -> bool:
+        if isinstance(__obj, AbsOperation):
+            return self._hash == __obj._hash
+        return NotImplemented
+
     @abstractmethod
-    def ReplyText(self, text: str) -> Coroutine[Any, Any, Message]:
+    def ReplyText(
+            self,
+            message: Message,
+            text: str,
+            ) -> Coroutine[Any, Any, Message]:
         """Replies the provided text."""
         pass
 
     @abstractmethod
-    def ReplyCallback(self, cb: str) -> Coroutine[Any, Any, MemoryError]:
+    def ReplyCallback(
+            self,
+            message: Message,
+            cb: str,
+            ) -> Coroutine[Any, Any, MemoryError]:
         """Replies the callback."""
         pass
 
 
-class AutoDelObj:
-    _POLLING_CANCEL_DELAY = 0.1
-    """The time interval at which to poll for deletion cancelation."""
+class SigninOp(AbsOperation):
+    """Encapsulates a sign-in operation in the Bot. You should start
+    this operation by calling `Start` method.
+    """
+    def __init__(self) -> None:
+        super().__init__()
+        self._firstName: str | None = None
+        self._lastName: str | None = None
+        self._email: str | None = None
+        self._phone: str | None = None
 
-    _MAX_POLLING = 10
-    """Maximum number of polling for deletion cancelation."""
-
-    def __init__(
+    def Start(
             self,
-            callback: Callable[[str], Coroutine[Any, Any, Message]]
-            ) -> None:
-        self._callback = callback
-        self._timer: TimerHandle | None = None
-        """The timer object of the pending deletion."""
-    
-    async def __call__(self, text: str) -> Coroutine[Any, Any, None]:
-        if self._timer:
-            self._timer.cancel()
-            idx = 0
-            while not self._timer.cancelled():
-                await sleep(AutoDelObj._POLLING_CANCEL_DELAY)
-                idx += 1
-                if idx > AutoDelObj._MAX_POLLING:
-                    logging.fatal('E1-1')
-                    return
+            message: Message
+            ) -> Coroutine[Any, Any, Message]:
+        return message.reply(lang.ENTER_YOUR_FIRST_NAME)
 
-
-_T = TypeVar('_T')
-
-class DeletablePool(ABC):
-    def __init__(self, db: IDatabase) -> None:
-        self._db = db
-        """The database object of the Bot."""
-        self._items: dict[ID, _T] = {}
-    
-    def __getitem__(self, __id: ID, /) -> Any:
-        """Returns the data associated with the provided `ID` or otherwise
-        if no such `ID` in the database, raises `KeyError`.
+    def ReplyText(
+            self,
+            message: Message,
+            text: str,
+            ) -> Coroutine[Any, Any, Message]:
+        """Gets from user and fills folowing items in consecutive calls:
+        1. first name
+        2. last name
+        3. e-mail
+        4. phone no.
         """
-        try:
-            data = self._items[__id]
-        except KeyError as err:
-            data = self.Load(__id)
-            if data:
-                self._items[__id] = data
-            else:
-                raise err
-        return data
-    
-    @abstractmethod
-    def Load(self, __id: ID, /) -> _T | None:
-        pass
-    
-    def ScheduleDel(self) -> None:
-        pass
-    
-    def UnscheduleDel(self) -> None:
-        pass
+        if self._firstName is None:
+            self._firstName = text
+        elif self._lastName is None:
+            self._lastName = text
+        elif self._email is None:
+            self._email = text
+        elif self._phone is None:
+            self._phone = text
+        else:
+            logging.error()
 
-    def RescheduleDel(self) -> None:
+    def ReplyCallback(
+            self,
+            message: Message,
+            cb: str,
+            ) -> Coroutine[Any, Any, MemoryError]:
         pass
 
 
