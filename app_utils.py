@@ -45,14 +45,7 @@ def ConfigureLogging(filename: PathLike) -> None:
     logging.info(datetime.now().strftime("%A %B %#d, %Y, %H:%M:%S"))
     logging.info('\n\n')
     # Logging program events...
-
-    """rootLogger.removeHandler(fileHandler)
-    fileHandler = logging.FileHandler(filename, 'a')"""
-
     fileHandler.setFormatter(detailedFormatter)
-
-    ## rootLogger.addHandler(fileHandler)
-
     # Setting debugging logger...
     stdoutHandler = logging.StreamHandler()
     stdoutHandler.setFormatter(detailedFormatter)
