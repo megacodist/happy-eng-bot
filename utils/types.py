@@ -9,21 +9,14 @@
 from abc import ABC, abstractmethod
 from asyncio import sleep, TimerHandle
 import enum
-<<<<<<< HEAD
-from typing import Any, TypeVar
-=======
 from typing import Any, Generic, TypeVar
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
 import logging
 from typing import Any, Callable, Coroutine, TypeVar
 
 from bale import Message
 
 from db import IDatabase
-<<<<<<< HEAD
-=======
 import lang
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
 
 
 ID = int
@@ -44,17 +37,6 @@ class Commands(enum.Enum):
     START = '/start'
 
 
-<<<<<<< HEAD
-_SDelType = TypeVar('_SDelType')
-class SDelPool:
-    """
-    ### Deletion-scheduled pool of objects
-
-    An object of this class is a pool of objects accessible via keys.
-    Elements are scheduled for deletion after each access and get
-    deleted after a specified amount of time. This scheduling happens
-    on `asyncio`.
-=======
 class InputType(enum.IntEnum):
     """Specifies the types of input the end user can enter."""
     TEXT = 0
@@ -72,19 +54,12 @@ class SDelPool(Generic[_SDelType]):
     keys. Memeber objects are scheduled for deletion after each access
     and get deleted after a specified amount of time if they do not access
     any more. This scheduling happens on `asyncio`.
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
 
     #### Operators:
     1. Getting an item with a key (`a = sdelPool[key]`)
     2. Setting an item with a key (`sdelPool[key[key] = a`)
     3. Deleting an item with a key (`del sdelPool[key]`)
     """
-<<<<<<< HEAD
-    def __init__(self) -> None:
-        from asyncio import TimerHandle
-        self._DEL_TIMINT = 3_600
-        """The time interval for deletion in seconds."""
-=======
     def __init__(self, id: ID) -> None:
         """Initializes a new instance of this type with the folowing:
 
@@ -95,7 +70,6 @@ class SDelPool(Generic[_SDelType]):
         """The time interval for deletion in seconds."""
         self._id = id
         """The ID of the user who initiate the operation."""
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
         self._items: dict[ID, _SDelType] = {}
         self._timers: dict[ID, TimerHandle] = {}
     
@@ -140,11 +114,6 @@ class SDelPool(Generic[_SDelType]):
 
 
 class AbsOperation(ABC):
-<<<<<<< HEAD
-    """Abstract base class for operations in the Bot."""
-    @abstractmethod
-    def ReplyText(self, text: str) -> Coroutine[Any, Any, Message]:
-=======
     """Abstract base class for operations in the Bot. Objects of this
     type supports the followings:
 
@@ -184,86 +153,19 @@ class AbsOperation(ABC):
             message: Message,
             text: str,
             ) -> Coroutine[Any, Any, Message]:
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
         """Replies the provided text."""
         pass
 
     @abstractmethod
-<<<<<<< HEAD
-    def ReplyCallback(self, cb: str) -> Coroutine[Any, Any, MemoryError]:
-=======
     def ReplyCallback(
             self,
             message: Message,
             cb: str,
             ) -> Coroutine[Any, Any, MemoryError]:
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
         """Replies the callback."""
         pass
 
 
-<<<<<<< HEAD
-class AutoDelObj:
-    _POLLING_CANCEL_DELAY = 0.1
-    """The time interval at which to poll for deletion cancelation."""
-
-    _MAX_POLLING = 10
-    """Maximum number of polling for deletion cancelation."""
-
-    def __init__(
-            self,
-            callback: Callable[[str], Coroutine[Any, Any, Message]]
-            ) -> None:
-        self._callback = callback
-        self._timer: TimerHandle | None = None
-        """The timer object of the pending deletion."""
-    
-    async def __call__(self, text: str) -> Coroutine[Any, Any, None]:
-        if self._timer:
-            self._timer.cancel()
-            idx = 0
-            while not self._timer.cancelled():
-                await sleep(AutoDelObj._POLLING_CANCEL_DELAY)
-                idx += 1
-                if idx > AutoDelObj._MAX_POLLING:
-                    logging.fatal('E1-1')
-                    return
-
-
-_T = TypeVar('_T')
-
-class DeletablePool(ABC):
-    def __init__(self, db: IDatabase) -> None:
-        self._db = db
-        """The database object of the Bot."""
-        self._items: dict[ID, _T] = {}
-    
-    def __getitem__(self, __id: ID, /) -> Any:
-        """Returns the data associated with the provided `ID` or otherwise
-        if no such `ID` in the database, raises `KeyError`.
-        """
-        try:
-            data = self._items[__id]
-        except KeyError as err:
-            data = self.Load(__id)
-            if data:
-                self._items[__id] = data
-            else:
-                raise err
-        return data
-    
-    @abstractmethod
-    def Load(self, __id: ID, /) -> _T | None:
-        pass
-    
-    def ScheduleDel(self) -> None:
-        pass
-    
-    def UnscheduleDel(self) -> None:
-        pass
-
-    def RescheduleDel(self) -> None:
-=======
 class SigninOp(AbsOperation):
     """Encapsulates a sign-in operation in the Bot. You should start
     this operation by calling `Start` method.
@@ -305,7 +207,6 @@ class SigninOp(AbsOperation):
             message: Message,
             cb: str,
             ) -> Coroutine[Any, Any, MemoryError]:
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
         pass
 
 

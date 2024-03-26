@@ -19,12 +19,8 @@ import lang
 from panels import (
 	GetAdminReply, GetHelpReply, GetProductsReply, GetUnexDataReply,
 	GetUserPanelReply ,GetUnexCommandReply)
-<<<<<<< HEAD
-from utils.types import Commands, ID, UserData
-=======
 from utils.types import (
     AbsOperation, Commands, ID, InputType, SDelPool, UserData)
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
 
 
 # Bot-wide variables & contants =====================================
@@ -45,16 +41,8 @@ users: dict[ID, UserData] = {}
 of the Bot.
 """
 
-<<<<<<< HEAD
-temps: dict[
-	ID,
-	Callable[[Message, dict, ID, str], Coroutine[Any, Any, None]]
-	] = {}
-"""The temporary objects for users' operations."""
-=======
 operations: SDelPool[AbsOperation] = SDelPool()
 """The ongoing operations."""
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
 
 
 # Configuring the logger ============================================
@@ -64,8 +52,6 @@ ConfigureLogging(APP_DIR / 'log.log')
 DB = SqliteDb(APP_DIR / 'db.db3')
 
 
-<<<<<<< HEAD
-=======
 def _Dispatch(
 		message: Message,
 		user: User,
@@ -83,7 +69,6 @@ def _Dispatch(
 		logging.error('E1-2', exc_info=True)
 
 
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
 def _DispatchCmd(
 		message: Message,
 		user: User,
@@ -107,8 +92,6 @@ def _DispatchCmd(
 		return GetUnexDataReply(message)
 
 
-<<<<<<< HEAD
-=======
 def _DispatchText(
 		message: Message,
 		user: User,
@@ -128,7 +111,6 @@ def _DispatchCallback(
 	pass
 
 
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
 # Creating & running the Bot ======================================== 
 happyEngBot = Bot(token=os.environ.get('BALE_HAPPY_ENG_BOT_TOKEN'))
 """The Bot object for this @happy_eng_bot."""
@@ -149,15 +131,11 @@ async def on_message(message: Message):
 	if not message.content:
 		logging.warning('an empty or None message')
 		return
-<<<<<<< HEAD
-	await _DispatchCmd(message, message.from_user, message.text)
-=======
 	await _Dispatch(
 		message,
 		message.from_user,
 		message.text,
 		InputType.TEXT)
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
 
 @happyEngBot.event
 async def on_message_edit(message: Message) -> None:
@@ -176,18 +154,11 @@ async def on_callback(callback: CallbackQuery) -> None:
 	if not callback.data:
 		logging.info('A callback with no data.')
 		return
-<<<<<<< HEAD
-	await _DispatchCmd(
-		callback.message,
-		callback.from_user,
-		callback.data)
-=======
 	await _Dispatch(
 		callback.message,
 		callback.from_user,
 		callback.data,
 		InputType.CALLBACK)
->>>>>>> bcc5a040f8b1ff9d63523ef2134001b9bb08dc14
 
 @happyEngBot.event
 async def on_member_chat_join(
