@@ -174,7 +174,6 @@ class SigninOp(AbsOperation):
         super().__init__()
         self._firstName: str | None = None
         self._lastName: str | None = None
-        self._email: str | None = None
         self._phone: str | None = None
 
     def Start(
@@ -198,8 +197,6 @@ class SigninOp(AbsOperation):
             self._firstName = text
         elif self._lastName is None:
             self._lastName = text
-        elif self._email is None:
-            self._email = text
         elif self._phone is None:
             self._phone = text
         else:
