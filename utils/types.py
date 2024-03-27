@@ -38,9 +38,13 @@ class Commands(enum.Enum):
 
 
 class InputType(enum.IntEnum):
-    """Specifies the types of input the end user can enter."""
+    """Specifies the types of input the end user can enter the Bot."""
     TEXT = 0
     CALLBACK = 1
+
+
+class SDelHook(enum.IntEnum):
+    AAA = 0
 
 
 _SDelType = TypeVar('_SDelType')
@@ -55,11 +59,15 @@ class SDelPool(Generic[_SDelType]):
     and get deleted after a specified amount of time if they do not access
     any more. This scheduling happens on `asyncio`.
 
-    #### Operators:
-    1. Getting an item with a key (`a = sdelPool[key]`)
-    2. Setting an item with a key (`sdelPool[key[key] = a`)
-    3. Deleting an item with a key (`del sdelPool[key]`)
+    #### Methods:
+    1. `GetItem`: gets an item with the key. There is also the sugar
+    syntax of subscript operator (`a = sdelPool[key]`).
+    2. `SetItem`: sets an item with the key and value. There is also
+    the sugar syntax of subscript operator (`sdelPool[key[key] = a`).
+    3. `DelItem`: deletes an item with the key. There is also the sugar
+    syntax of subscript operator (`del sdelPool[key]`).
     """
+
     def __init__(self, id: ID) -> None:
         """Initializes a new instance of this type with the folowing:
 
@@ -72,23 +80,33 @@ class SDelPool(Generic[_SDelType]):
         """The ID of the user who initiate the operation."""
         self._items: dict[ID, _SDelType] = {}
         self._timers: dict[ID, TimerHandle] = {}
+        self._hooks: dict[SDelHook, list] = {}
     
     def __getitem__(self, __key: ID, /) -> _SDelType:
-        item = self._items[__key]
-        self.ScheduleDel(__key)
-        return item
+        return self.GetItem(__key)
 
     def __setitem__(self, __key: ID, __value: _SDelType, /) -> None:
-        self._items[__key] = __value
-        self.ScheduleDel(__key)
+        self.SetItem(__key, __value)
 
     def __delitem__(self, __key: ID, /) -> None:
-        del self._items[__key]
-        self.UnscheduleDel(__key)
+        self.DelItem(__key)
 
     def _DeleteKey(self, __key: ID, /) -> None:
         del self._items[__key]
         del self._timers[__key]
+    
+    def GetItem(self, __key: ID, /) -> _SDelType:
+        item = self._items[__key]
+        self.ScheduleDel(__key)
+        return item
+    
+    def SetItem(self, __key: ID, __value: _SDelType, /) -> None:
+        self._items[__key] = __value
+        self.ScheduleDel(__key)
+    
+    def DelItem(self, __key: ID, /) -> None:
+        del self._items[__key]
+        self.UnscheduleDel(__key)
 
     def ScheduleDel(self, key: ID) -> None:
         """Schedules a key for deletion. If it is already scheduled,
