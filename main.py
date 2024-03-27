@@ -30,8 +30,12 @@ APP_DIR = Path(__file__).resolve().parent
 import tomllib
 ADMIN_IDS: tuple[int, ...]
 """A tuple of ID's of admin users."""
+_TOKEN: str
+"""The token of the Bale bot."""
 with open(APP_DIR / 'config.toml', mode='rb') as tomlObj:
-	ADMIN_IDS = tomllib.load(tomlObj)['ADMIN_IDS']
+	settings = tomllib.load(tomlObj)
+	ADMIN_IDS = settings['ADMIN_IDS']
+	_TOKEN = settings['BALE_BOT_TOKEN']
 
 DB: IDatabase
 """The database."""
@@ -112,7 +116,7 @@ def _DispatchCallback(
 
 
 # Creating & running the Bot ======================================== 
-happyEngBot = Bot(token=os.environ.get('BALE_HAPPY_ENG_BOT_TOKEN'))
+happyEngBot = Bot(token=_TOKEN)
 """The Bot object for this @happy_eng_bot."""
 
 @happyEngBot.event

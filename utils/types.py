@@ -13,7 +13,7 @@ from typing import Any, Generic, TypeVar
 import logging
 from typing import Any, Callable, Coroutine, TypeVar
 
-from bale import Message
+from bale import Message, User
 
 from db import IDatabase
 import lang
@@ -38,9 +38,13 @@ class Commands(enum.Enum):
 
 
 class InputType(enum.IntEnum):
-    """Specifies the types of input the end user can enter."""
+    """Specifies the types of input the end user can enter the Bot."""
     TEXT = 0
     CALLBACK = 1
+
+
+class SDelHook(enum.IntEnum):
+    AAA = 0
 
 
 _SDelType = TypeVar('_SDelType')
@@ -55,11 +59,15 @@ class SDelPool(Generic[_SDelType]):
     and get deleted after a specified amount of time if they do not access
     any more. This scheduling happens on `asyncio`.
 
-    #### Operators:
-    1. Getting an item with a key (`a = sdelPool[key]`)
-    2. Setting an item with a key (`sdelPool[key[key] = a`)
-    3. Deleting an item with a key (`del sdelPool[key]`)
+    #### Methods:
+    1. `GetItem`: gets an item with the key. There is also the sugar
+    syntax of subscript operator (`a = sdelPool[key]`).
+    2. `SetItem`: sets an item with the key and value. There is also
+    the sugar syntax of subscript operator (`sdelPool[key[key] = a`).
+    3. `DelItem`: deletes an item with the key. There is also the sugar
+    syntax of subscript operator (`del sdelPool[key]`).
     """
+
     def __init__(self, id: ID) -> None:
         """Initializes a new instance of this type with the folowing:
 
@@ -72,23 +80,33 @@ class SDelPool(Generic[_SDelType]):
         """The ID of the user who initiate the operation."""
         self._items: dict[ID, _SDelType] = {}
         self._timers: dict[ID, TimerHandle] = {}
+        self._hooks: dict[SDelHook, list] = {}
     
     def __getitem__(self, __key: ID, /) -> _SDelType:
-        item = self._items[__key]
-        self.ScheduleDel(__key)
-        return item
+        return self.GetItem(__key)
 
     def __setitem__(self, __key: ID, __value: _SDelType, /) -> None:
-        self._items[__key] = __value
-        self.ScheduleDel(__key)
+        self.SetItem(__key, __value)
 
     def __delitem__(self, __key: ID, /) -> None:
-        del self._items[__key]
-        self.UnscheduleDel(__key)
+        self.DelItem(__key)
 
     def _DeleteKey(self, __key: ID, /) -> None:
         del self._items[__key]
         del self._timers[__key]
+    
+    def GetItem(self, __key: ID, /) -> _SDelType:
+        item = self._items[__key]
+        self.ScheduleDel(__key)
+        return item
+    
+    def SetItem(self, __key: ID, __value: _SDelType, /) -> None:
+        self._items[__key] = __value
+        self.ScheduleDel(__key)
+    
+    def DelItem(self, __key: ID, /) -> None:
+        del self._items[__key]
+        self.UnscheduleDel(__key)
 
     def ScheduleDel(self, key: ID) -> None:
         """Schedules a key for deletion. If it is already scheduled,
@@ -120,31 +138,32 @@ class AbsOperation(ABC):
     1. hash protocol
     2. equality comparison
     """
-    _nHash = 0
-    """This attribute is used to produce unique hash in
-    `GetUniqueHash` class method"""
+    _nId = 0
+    """This attribute is used to produce unique id in `GetUid` class
+    method.
+    """
 
     @classmethod
-    def GetUniqueHash(cls) -> int:
-        """Produces a unique hash. This uniqueness is guaranteed among
+    def GetUid(cls) -> int:
+        """Produces a unique id. This uniqueness is guaranteed among
         all instances of this class.
         """
-        hash_ = cls._nHash
-        cls._nHash += 1
-        if cls._nHash > 0xff_ff_ff_ff:
-            cls._nHash = 0
+        hash_ = cls._nId
+        cls._nId += 1
+        if cls._nId > 0xff_ff_ff_ff:
+            cls._nId = 0
         return hash_
     
     def __init__(self) -> None:
-        self._hash = AbsOperation.GetUniqueHash()
-        """The hash of this object."""
+        self._uid = AbsOperation.GetUid()
+        """The unique ID of this instance."""
     
     def __hash__(self) -> int:
-        return self._hash
+        return self._uid
 
     def __eq__(self, __obj, /) -> bool:
         if isinstance(__obj, AbsOperation):
-            return self._hash == __obj._hash
+            return self._uid == __obj._uid
         return NotImplemented
 
     @abstractmethod
@@ -152,8 +171,10 @@ class AbsOperation(ABC):
             self,
             message: Message,
             text: str,
-            ) -> Coroutine[Any, Any, Message]:
-        """Replies the provided text."""
+            ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
+        """Replies the provided text. It must return `True` if the
+        operation finished.
+        """
         pass
 
     @abstractmethod
@@ -161,8 +182,10 @@ class AbsOperation(ABC):
             self,
             message: Message,
             cb: str,
-            ) -> Coroutine[Any, Any, MemoryError]:
-        """Replies the callback."""
+            ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
+        """Replies the callback. It must return `True` if the
+        operation finished.
+        """
         pass
 
 
@@ -206,7 +229,33 @@ class SigninOp(AbsOperation):
             self,
             message: Message,
             cb: str,
-            ) -> Coroutine[Any, Any, MemoryError]:
+            ) -> Coroutine[Any, Any, Message]:
+        pass
+
+
+class OpPool:
+    def __init__(self) -> None:
+        self._ops: dict[ID, AbsOperation] = {}
+        """The mapping of all operations."""
+
+    def __contains__(self, __id: ID, /) -> bool:
+        return __id in self._ops
+
+    def GetTextReply(
+            self,
+            message: Message,
+            user: User,
+            text: str,
+            ) -> Coroutine[Any, Any, Message] | None:
+        """Gets the reply of the user provided text. It raises `KeyError`
+        
+        """
+        try:
+            reply, finished = self._ops[user.id].ReplyText(message, text)
+        except KeyError:
+            pass
+
+    def GetCallbackReply(self) -> Coroutine[Any, Any, Message] | None:
         pass
 
 
