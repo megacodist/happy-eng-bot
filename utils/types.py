@@ -13,7 +13,7 @@ from typing import Any, Generic, TypeVar
 import logging
 from typing import Any, Callable, Coroutine, TypeVar
 
-from bale import Message
+from bale import Message, User
 
 from db import IDatabase
 import lang
@@ -138,31 +138,32 @@ class AbsOperation(ABC):
     1. hash protocol
     2. equality comparison
     """
-    _nHash = 0
-    """This attribute is used to produce unique hash in
-    `GetUniqueHash` class method"""
+    _nId = 0
+    """This attribute is used to produce unique id in `GetUid` class
+    method.
+    """
 
     @classmethod
-    def GetUniqueHash(cls) -> int:
-        """Produces a unique hash. This uniqueness is guaranteed among
+    def GetUid(cls) -> int:
+        """Produces a unique id. This uniqueness is guaranteed among
         all instances of this class.
         """
-        hash_ = cls._nHash
-        cls._nHash += 1
-        if cls._nHash > 0xff_ff_ff_ff:
-            cls._nHash = 0
+        hash_ = cls._nId
+        cls._nId += 1
+        if cls._nId > 0xff_ff_ff_ff:
+            cls._nId = 0
         return hash_
     
     def __init__(self) -> None:
-        self._hash = AbsOperation.GetUniqueHash()
-        """The hash of this object."""
+        self._uid = AbsOperation.GetUid()
+        """The unique ID of this instance."""
     
     def __hash__(self) -> int:
-        return self._hash
+        return self._uid
 
     def __eq__(self, __obj, /) -> bool:
         if isinstance(__obj, AbsOperation):
-            return self._hash == __obj._hash
+            return self._uid == __obj._uid
         return NotImplemented
 
     @abstractmethod
@@ -170,8 +171,10 @@ class AbsOperation(ABC):
             self,
             message: Message,
             text: str,
-            ) -> Coroutine[Any, Any, Message]:
-        """Replies the provided text."""
+            ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
+        """Replies the provided text. It must return `True` if the
+        operation finished.
+        """
         pass
 
     @abstractmethod
@@ -179,8 +182,10 @@ class AbsOperation(ABC):
             self,
             message: Message,
             cb: str,
-            ) -> Coroutine[Any, Any, MemoryError]:
-        """Replies the callback."""
+            ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
+        """Replies the callback. It must return `True` if the
+        operation finished.
+        """
         pass
 
 
@@ -224,7 +229,33 @@ class SigninOp(AbsOperation):
             self,
             message: Message,
             cb: str,
-            ) -> Coroutine[Any, Any, MemoryError]:
+            ) -> Coroutine[Any, Any, Message]:
+        pass
+
+
+class OpPool:
+    def __init__(self) -> None:
+        self._ops: dict[ID, AbsOperation] = {}
+        """The mapping of all operations."""
+
+    def __contains__(self, __id: ID, /) -> bool:
+        return __id in self._ops
+
+    def GetTextReply(
+            self,
+            message: Message,
+            user: User,
+            text: str,
+            ) -> Coroutine[Any, Any, Message] | None:
+        """Gets the reply of the user provided text. It raises `KeyError`
+        
+        """
+        try:
+            reply, finished = self._ops[user.id].ReplyText(message, text)
+        except KeyError:
+            pass
+
+    def GetCallbackReply(self) -> Coroutine[Any, Any, Message] | None:
         pass
 
 
