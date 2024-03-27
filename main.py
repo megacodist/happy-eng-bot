@@ -20,7 +20,7 @@ from panels import (
 	GetAdminReply, GetHelpReply, GetProductsReply, GetUnexDataReply,
 	GetUserPanelReply ,GetUnexCommandReply)
 from utils.types import (
-    AbsOperation, Commands, ID, InputType, SDelPool, UserData)
+    AbsOperation, Commands, ID, InputType, OpPool, SDelPool, UserData)
 
 
 # Bot-wide variables & contants =====================================
@@ -45,7 +45,7 @@ users: dict[ID, UserData] = {}
 of the Bot.
 """
 
-operations: SDelPool[AbsOperation] = SDelPool()
+operations = OpPool()
 """The ongoing operations."""
 
 

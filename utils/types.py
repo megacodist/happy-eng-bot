@@ -9,7 +9,7 @@
 from abc import ABC, abstractmethod
 from asyncio import sleep, TimerHandle
 import enum
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Protocol, TypeVar, runtime_checkable
 import logging
 from typing import Any, Callable, Coroutine, TypeVar
 
@@ -66,21 +66,22 @@ class SDelPool(Generic[_SDelType]):
     the sugar syntax of subscript operator (`sdelPool[key[key] = a`).
     3. `DelItem`: deletes an item with the key. There is also the sugar
     syntax of subscript operator (`del sdelPool[key]`).
+
+    #### Operators:
+    1. `a = sdelPool[key]`
+    2. `sdelPool[key[key] = a`
+    3. `del sdelPool[key]`
+    4. `key in sdelPool`
     """
 
-    def __init__(self, id: ID) -> None:
-        """Initializes a new instance of this type with the folowing:
+    def __init__(self) -> None:
+        """Initializes a new instance of this type."""
 
-        * `id`: the ID of the user.
-        """
         from asyncio import TimerHandle
         self._DEL_TIMINT = 3_600
         """The time interval for deletion in seconds."""
-        self._id = id
-        """The ID of the user who initiate the operation."""
         self._items: dict[ID, _SDelType] = {}
         self._timers: dict[ID, TimerHandle] = {}
-        self._hooks: dict[SDelHook, list] = {}
     
     def __getitem__(self, __key: ID, /) -> _SDelType:
         return self.GetItem(__key)
@@ -90,21 +91,36 @@ class SDelPool(Generic[_SDelType]):
 
     def __delitem__(self, __key: ID, /) -> None:
         self.DelItem(__key)
+    
+    def __contains__(self, __key: ID, /) -> None:
+        return __key in self._items
 
     def _DeleteKey(self, __key: ID, /) -> None:
+        """This member method is called on schedule to remove the
+        specified key.
+        """
         del self._items[__key]
         del self._timers[__key]
     
     def GetItem(self, __key: ID, /) -> _SDelType:
+        """Gets the member object at the specified key and reset deletion
+        scheduling. It raises `KeyError` if key does not exist.
+        """
         item = self._items[__key]
         self.ScheduleDel(__key)
         return item
     
     def SetItem(self, __key: ID, __value: _SDelType, /) -> None:
+        """Sets member object at the specified key and schedules it for
+        deletion.
+        """
         self._items[__key] = __value
         self.ScheduleDel(__key)
     
     def DelItem(self, __key: ID, /) -> None:
+        """Deletes the specified member object with key. It raises
+        `KeyError` if the key does not exist.
+        """
         del self._items[__key]
         self.UnscheduleDel(__key)
 
@@ -172,8 +188,8 @@ class AbsOperation(ABC):
             message: Message,
             text: str,
             ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
-        """Replies the provided text. It must return `True` if the
-        operation finished.
+        """Optionally replies the provided text. It must return `True` if
+        the operation finished otherwise `False`.
         """
         pass
 
@@ -183,8 +199,8 @@ class AbsOperation(ABC):
             message: Message,
             cb: str,
             ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
-        """Replies the callback. It must return `True` if the
-        operation finished.
+        """Optionally replies the provided callback. It must return `True`
+        if the operation finished otherwise `False`.
         """
         pass
 
@@ -233,13 +249,9 @@ class SigninOp(AbsOperation):
         pass
 
 
-class OpPool:
+class OpPool(SDelPool[AbsOperation]):
     def __init__(self) -> None:
-        self._ops: dict[ID, AbsOperation] = {}
-        """The mapping of all operations."""
-
-    def __contains__(self, __id: ID, /) -> bool:
-        return __id in self._ops
+        super().__init__()
 
     def GetTextReply(
             self,
@@ -247,16 +259,24 @@ class OpPool:
             user: User,
             text: str,
             ) -> Coroutine[Any, Any, Message] | None:
-        """Gets the reply of the user provided text. It raises `KeyError`
-        
+        """Gets the optional reply of the user provided text. It raises
+        `KeyError`
         """
-        try:
-            reply, finished = self._ops[user.id].ReplyText(message, text)
-        except KeyError:
-            pass
+        reply, finished = self[user.id].ReplyText(message, text)
+        if finished:
+            self.DelItem(user.id)
+        return reply
 
-    def GetCallbackReply(self) -> Coroutine[Any, Any, Message] | None:
-        pass
+    def GetCallbackReply(
+            self,
+            message: Message,
+            user: User,
+            text: str,
+            ) -> Coroutine[Any, Any, Message] | None:
+        reply, finished = self[user.id].ReplyCallback(message, text)
+        if finished:
+            self.DelItem(user.id)
+        return reply
 
 
 class UserData:
