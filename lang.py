@@ -16,6 +16,12 @@ COMMANDS = 'دستورات'
 
 PANEL = 'صفحه'
 
+OPERATION = 'فرآیند'
+
+CANCEL_OP = f'لغو {OPERATION}'
+
+CONTINUE_OP = f'ادامه {OPERATION}'
+
 ADMIN_PANEL = f'{PANEL} {ADMIN}'
 """The title of the Admin Panel."""
 
@@ -61,3 +67,5 @@ UNKNOWN_USER = f'{USER} شما ناشناس است'
 COMMANDS_CMD_INFO = F'{COMMANDS}: برای نامیش خلاصه همه {COMMANDS}'
 
 UNEX_DATA = 'شما مجاز به وارد کردن اطلاعات نیستید. اگر در میانه فرآیندی بودید، از ابتدا آن را انجام دهید.'
+
+DISRUPTIVE_CMD = 'شما در حال انجام یک فرآیند هستید. با وارد کردن یک دستور، آن فرآیند لغو می شود.'

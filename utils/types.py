@@ -1,9 +1,14 @@
 #
 # 
 #
-"""This module exposes the specialized types for this Bot:
+"""This module exposes the follwoings for this Bot:
 
+#### Types
 1. `Commands`
+
+#### Dependencies
+1. Python 3.12
+2. `python-bale-bot`
 """
 
 from abc import ABC, abstractmethod
@@ -13,13 +18,13 @@ from typing import Any, Generic, Protocol, TypeVar, runtime_checkable
 import logging
 from typing import Any, Callable, Coroutine, TypeVar
 
-from bale import Message, User
+from bale import Message, User, InlineKeyboardButton, InlineKeyboardMarkup
 
 from db import IDatabase
 import lang
 
 
-ID = int
+type ID = int
 """Instaces of `ID` type are, of course, integers but has better treat
 as IDs of users' in Bale.
 """
@@ -47,10 +52,10 @@ class SDelHook(enum.IntEnum):
     AAA = 0
 
 
-_SDelType = TypeVar('_SDelType')
-"""The type of member objects inside of an `SDelPool` object."""
+'''_SDelType = TypeVar('_SDelType')
+"""The type of member objects inside of an `SDelPool` object."""'''
 
-class SDelPool(Generic[_SDelType]):
+class SDelPool[_SDelType]():
     """
     ### Deletion-scheduled pool of objects
 
@@ -155,12 +160,12 @@ class AbsOperation(ABC):
     2. equality comparison
     """
     _nId = 0
-    """This attribute is used to produce unique id in `GetUid` class
+    """This attribute is used to produce unique id in `GenerateUid` class
     method.
     """
 
     @classmethod
-    def GetUid(cls) -> int:
+    def GenerateUid(cls) -> int:
         """Produces a unique id. This uniqueness is guaranteed among
         all instances of this class.
         """
@@ -171,7 +176,7 @@ class AbsOperation(ABC):
         return hash_
     
     def __init__(self) -> None:
-        self._uid = AbsOperation.GetUid()
+        self._uid = AbsOperation.GenerateUid()
         """The unique ID of this instance."""
     
     def __hash__(self) -> int:
@@ -181,6 +186,28 @@ class AbsOperation(ABC):
         if isinstance(__obj, AbsOperation):
             return self._uid == __obj._uid
         return NotImplemented
+    
+    @property
+    def Uid(self) -> int:
+        """Returns the unique ID of this object."""
+        return self._uid
+    
+    def CancelByCmd(
+            self,
+            message: Message,
+            cmd: str
+            ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
+        """Optionally returns a reply for the passed in command and
+        specifies whether the whole operation has finished or not.
+        """
+        buttons = InlineKeyboardMarkup()
+        buttons.add(InlineKeyboardButton(
+            lang.CONTINUE_OP,
+            callback_data=f'{self.Uid}-2'))
+        buttons.add(InlineKeyboardButton(
+            lang.CANCEL_OP,
+            callback_data=f'{self.Uid}-1-{cmd}'))
+        return message.reply(lang.DISRUPTIVE_CMD, components=buttons), False
 
     @abstractmethod
     def ReplyText(
@@ -193,16 +220,32 @@ class AbsOperation(ABC):
         """
         pass
 
-    @abstractmethod
     def ReplyCallback(
             self,
             message: Message,
             cb: str,
             ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
         """Optionally replies the provided callback. It must return `True`
-        if the operation finished otherwise `False`.
+        if the operation finished otherwise `False`. Callback data are in the
+        format of `<uid>-<cbnum>-<optional>`. The `Uid` must be eliminated
+        by operation manager and the rest must be fed into this method.
         """
-        pass
+        # Turning 'cb' into [int, optional]...
+        parts = cb.split('-')
+        try:
+            parts[0] = int(parts[0])
+        except IndexError:
+            logging.error('E1-3')
+            return
+        except ValueError:
+            logging.error('E1-4')
+            return
+        # Replying callback...
+        match parts[0]:
+            case self.CONTINUE_CB:
+                return None, False
+            case self.CANCELED_BY_CMD_CB:
+                pass
 
 
 class SigninOp(AbsOperation):
@@ -246,10 +289,23 @@ class SigninOp(AbsOperation):
             message: Message,
             cb: str,
             ) -> Coroutine[Any, Any, Message]:
-        pass
+        super().ReplyCallback(message, cb)
 
 
 class OpPool(SDelPool[AbsOperation]):
+
+    CANCELED_BY_CMD_CB = 1
+    """The infix of the callback data denotes cancelation of this
+    operation by a command. The callback data must have this format:
+    `<uid>-1-/<cmd>`
+    """
+
+    CONTINUE_CB = 2
+    """The suffix of the callback data which denotes that this operation
+    to be continued. The callback data must have this format:
+    `<uid>-2`
+    """
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -260,7 +316,7 @@ class OpPool(SDelPool[AbsOperation]):
             text: str,
             ) -> Coroutine[Any, Any, Message] | None:
         """Gets the optional reply of the user provided text. It raises
-        `KeyError`
+        `KeyError` if the user does not have an ongoing operation.
         """
         reply, finished = self[user.id].ReplyText(message, text)
         if finished:
@@ -271,12 +327,36 @@ class OpPool(SDelPool[AbsOperation]):
             self,
             message: Message,
             user: User,
-            text: str,
+            cb: str,
             ) -> Coroutine[Any, Any, Message] | None:
-        reply, finished = self[user.id].ReplyCallback(message, text)
+        """Gets the optional reply of the callback. It raises
+        `KeyError` if the user does not have an ongoing operation.
+        """
+        reply, finished = self[user.id].ReplyCallback(message, cb)
         if finished:
             self.DelItem(user.id)
         return reply
+    
+    def CancelByCmdReply(
+            self,
+            message: Message,
+            user: User,
+            cmd: str,
+            ) -> Coroutine[Any, Any, Message] | None:
+        """It raises
+        `KeyError` if the user does not have an ongoing operation.
+        """
+        # Checking if the user has an ongoing operation...
+        self._items[user.id]
+        # Asking for cancelation...
+        buttons = InlineKeyboardMarkup()
+        buttons.add(InlineKeyboardButton(
+            lang.CONTINUE_OP,
+            callback_data=f'{self.Uid}-2'))
+        buttons.add(InlineKeyboardButton(
+            lang.CANCEL_OP,
+            callback_data=f'{self.Uid}-1-{cmd}'))
+        return message.reply(lang.DISRUPTIVE_CMD, components=buttons), False
 
 
 class UserData:
