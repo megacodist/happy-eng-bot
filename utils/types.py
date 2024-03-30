@@ -20,14 +20,8 @@ from typing import Any, Callable, Coroutine, TypeVar
 
 from bale import Message, User, InlineKeyboardButton, InlineKeyboardMarkup
 
-from db import IDatabase
+from db import ID, IDatabase, UserData
 import lang
-
-
-type ID = int
-"""Instaces of `ID` type are, of course, integers but has better treat
-as IDs of users' in Bale.
-"""
 
 
 class Commands(enum.Enum):
@@ -48,14 +42,10 @@ class InputType(enum.IntEnum):
     CALLBACK = 1
 
 
-class SDelHook(enum.IntEnum):
-    AAA = 0
+_SDelType = TypeVar('_SDelType')
 
 
-'''_SDelType = TypeVar('_SDelType')
-"""The type of member objects inside of an `SDelPool` object."""'''
-
-class SDelPool[_SDelType]():
+class SDelPool[_SDelType]:
     """
     ### Deletion-scheduled pool of objects
 
@@ -173,11 +163,49 @@ class SDelPool[_SDelType]():
             self._timers[key] = None
 
 
-class LSDelPool(SDelPool):
+class LSDelPool(SDelPool[_SDelType]):
+    """
+    #### Loadable SDelPool
+    Objects of this type act like `SDelPool` but upon failure in
+    access, it tries to load the object via `Load` method.
+    """
     def __init__(self, db: IDatabase) -> None:
         super().__init__()
         self._db = db
         """The database object"""
+    
+    @abstractmethod
+    def Load(self, key: ID) -> _SDelType:
+        """Loads member object when the key is not available. If it cannot
+        load the member object, it must raise `KeyError` exception.
+        """
+        pass
+
+    @abstractmethod
+    def Save(self, key: ID) -> None:
+        """Saves the member object just before deletion. If it cannot
+        load the member object, it must throws `KeyError` exception.
+        """
+        pass
+
+    def _GetKey(self, __key: ID, /) -> _SDelType:
+        try:
+            item = super()._GetKey(__key)
+        except KeyError:
+            item = self.Load(__key)
+        return item
+
+    def _DeleteKey(self, __key: ID, /) -> None:
+        self.Save(__key)
+        super()._DeleteKey(__key)
+
+
+class Users(LSDelPool[UserData]):
+    def Load(self, key: int) -> UserData:
+        userData = self._db.GetUser(key)
+        if userData is None:
+            raise KeyError()
+        return userData
 
 
 class AbsOperation(ABC):
@@ -385,50 +413,3 @@ class OpPool(SDelPool[AbsOperation]):
             lang.CANCEL_OP,
             callback_data=f'{self.Uid}-1-{cmd}'))
         return message.reply(lang.DISRUPTIVE_CMD, components=buttons), False
-
-
-class UserData:
-    def __init__(
-            self,
-            first_name: str,
-            last_name: str,
-            email: str,
-            phone_num: str,
-            ) -> None:
-        self._firstName = first_name
-        self._lastName = last_name
-        self._email = email
-        self._phoneNum = phone_num
-    
-    @property
-    def FirstName(self) -> str:
-        return self._firstName
-    
-    @property
-    def LastName(self) -> str:
-        return self._lastName
-    
-    @property
-    def Email(self) -> str:
-        return self._email
-    
-    @property
-    def PhoneNum(self) -> str:
-        return self._phoneNum
-
-
-class Users:
-    """This data structure manages and holds information of recent users
-    of the Bot.
-    """
-    def __init__(self, db: IDatabase) -> None:
-        self._db = db
-        """The database of the Bot."""
-        self._users: dict[ID, UserData] = {}
-        """The mapping of all recent users of the Bot."""
-    
-    def __getitem__(self, __id: ID, /) -> UserData:
-        try:
-            return self._users[__id]
-        except KeyError:
-            pass
