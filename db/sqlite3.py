@@ -57,7 +57,9 @@ class SqliteDb(IDatabase):
                 user_id = ?;
         """
         cur = self._conn.cursor()
-        cur = cur.execute(sql, (user_data.FirstName, user_data.LastName, user_data.Phone))
+        cur = cur.execute(
+            sql,
+            (user_data.FirstName, user_data.LastName, user_data.Phone))
     
     def DoesIdExist(self, __id: int) -> bool:
         sql = """
