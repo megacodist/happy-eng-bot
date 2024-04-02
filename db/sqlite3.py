@@ -9,7 +9,7 @@ import sqlite3
 
 from db import UserData
 
-from . import IDatabase
+from . import HourlyFrequencies, IDatabase
 
 
 class SqliteDb(IDatabase):
@@ -31,7 +31,7 @@ class SqliteDb(IDatabase):
     def GetUser(self, __id: int) -> UserData | None:
         sql = """
             SELECT
-                user_id, first_name, last_name, phone, frequencies
+                user_id, first_name, last_name, phone, hourly_freqs
             FROM
                 users
             WHERE
@@ -42,24 +42,28 @@ class SqliteDb(IDatabase):
         res = cur.fetchone()
         if res is None:
             return None
-        return UserData(res[0], res[1], res[2], res[3], res[4])
+        hourlyFreqs = HourlyFrequencies()
+        hourlyFreqs.Bytes = res[4]
+        return UserData(res[0], res[1], res[2], res[3], hourlyFreqs)
     
-    def UpdateUser(self, user_data: UserData) -> None:
+    def UpsertUser(self, user_data: UserData) -> None:
         sql = """
-            UPDATE
-                users
-            SET
-                first_name = ?,
-                last_name = ?,
-                phone = ?,
-                frequencies = ?
-            WHERE
-                user_id = ?;
+            INSERT OR REPLACE INTO
+                users(user_id, first_name, last_name, phone, hourly_freqs)
+            VALUES
+                (?, ?, ?, ?, ?);
         """
         cur = self._conn.cursor()
         cur = cur.execute(
             sql,
-            (user_data.FirstName, user_data.LastName, user_data.Phone))
+            (
+                user_data._id,
+                user_data._firstName,
+                user_data._lastName,
+                user_data._phone,
+                user_data._hFreqs.Bytes
+            ))
+        self._conn.commit()
     
     def DoesIdExist(self, __id: int) -> bool:
         sql = """

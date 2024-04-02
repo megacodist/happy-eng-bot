@@ -2,26 +2,21 @@
 # 
 #
 
-from dataclasses import dataclass
-
-class Collection[T]:
-    def __init__(self) -> None:
-        self._items: list[T] = []
-    
-    def GetItem(self, __idx: int, /) -> T:
-        return self._items[__idx]
+from datetime import date, timedelta
 
 
-@dataclass
-class Person:
-    name: str
-    id: int
+class Foo(object):
+    def __getitem__(self, __val1, /) -> None:
+        print(__val1,)
 
 
-class People(Collection[Person]):
-    pass
+def main() -> None:
+    interval = timedelta(seconds=-1)
+    print(interval)
+    date_ = date.today()
+    print(date_.toordinal())
 
 
 if __name__ == '__main__':
-    people = People()
-    people.GetItem
+    b = Foo()
+    b[1, 2]

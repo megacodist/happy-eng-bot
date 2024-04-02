@@ -2,31 +2,33 @@
 #
 #
 
+from __future__ import annotations
 import logging
-import os
 from pathlib import Path
-import signal
-from types import FrameType
 from typing import Any, Callable, Coroutine
 
-from bale import (
-	Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment)
+from bale import Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment
 
 from app_utils import ConfigureLogging
 from db import IDatabase
 from db.sqlite3 import SqliteDb
 import lang
 from panels import (
-	GetAdminReply, GetHelpReply, GetProductsReply, GetUnexDataReply,
-	GetUserPanelReply ,GetUnexCommandReply)
+	GetAdminReply, GetHelpReply, GetShowcaseReply, GetUnexDataReply,
+	GetStartReply ,GetUnexCommandReply, GetSiginReply)
 from utils.types import (
-    AbsOperation, Commands, ID, InputType, OpPool, SDelPool, UserData)
+    AbsOperation, Commands, HappyEngBot, ID, InputType, OperationPool,
+	SDelPool, UserData,	UserPool)
 
 
 # Bot-wide variables & contants =====================================
 APP_DIR = Path(__file__).resolve().parent
 """The directory of the Bot."""
 
+# Configuring the logger ============================================
+ConfigureLogging(APP_DIR / 'log.log')
+
+# Preparing global variables ========================================
 import tomllib
 ADMIN_IDS: tuple[int, ...]
 """A tuple of ID's of admin users."""
@@ -37,82 +39,101 @@ with open(APP_DIR / 'config.toml', mode='rb') as tomlObj:
 	ADMIN_IDS = settings['ADMIN_IDS']
 	_TOKEN = settings['BALE_BOT_TOKEN']
 
-DB: IDatabase
+DB: IDatabase = SqliteDb(APP_DIR / 'db.db3')
 """The database."""
 
-users: dict[ID, UserData] = {}
+userPool = UserPool(DB)
 """A mapping of `ID -> UserData` contains all information of recent users
 of the Bot.
 """
 
-operations = OpPool()
+opPool = OperationPool(userPool, None)
 """The ongoing operations."""
 
 
-# Configuring the logger ============================================
-ConfigureLogging(APP_DIR / 'log.log')
-
-# Preparing the database ============================================
-DB = SqliteDb(APP_DIR / 'db.db3')
-
-
-def _Dispatch(
+# Reply functions =========================================
+async def _Reply(
 		message: Message,
-		user: User,
+		bale_user: User,
 		input_: str | None,
 		type_: InputType,
-		) -> Coroutine[Any, Any, Message]:
+		) -> Coroutine[Any, Any, None]:
 	"""Disptaches the user input."""
+	# Getting reply...
 	if input_.startswith('/'):
-		return _DispatchCmd(message, user, input_)
+		reply = _DispatchCmd(message, bale_user, input_)
 	elif type_ == InputType.TEXT:
-		return _DispatchText(message, user, input_)
+		reply = _DispatchText(message, bale_user, input_)
 	elif type_ == InputType.CALLBACK:
-		return _DispatchCallback(message, user, input_)
+		reply = _DispatchCallback(message, bale_user, input_)
 	else:
 		logging.error('E1-2', exc_info=True)
+	# Returning reply to the user...
+	if reply:
+		await reply
 
 
 def _DispatchCmd(
-		message: Message,
-		user: User,
+		bale_msg: Message,
+		bale_user: User,
 		cmd: str | None,
-		) -> Coroutine[Any, Any, Message]:
-	commandParts = cmd.split()
-	commandParts[0] = commandParts[0].lower()
-	if commandParts[0] == Commands.ADMIN.value:
-		return GetAdminReply(message, ADMIN_IDS)
-	elif commandParts[0] == Commands.HELP.value:
-		return GetHelpReply(message)
-	elif commandParts[0] == Commands.MY_COURSES.name:
+		) -> Coroutine[Any, Any, Message] | None:
+	# Checking interference with an ongoing operation...
+	try:
+		return opPool.CancelByCmdReply(bale_msg, bale_user, cmd)
+	except (KeyError, ValueError):
 		pass
-	elif commandParts[0] == Commands.SHOWCASE.value:
-		return GetProductsReply(message)
-	elif commandParts[0] == Commands.SIGN_IN.name:
-		pass
-	elif commandParts[0] == Commands.START.value:
-		return GetUserPanelReply(message, DB, ADMIN_IDS)
-	else:
-		return GetUnexDataReply(message)
+	# Initiating a new operation...
+	cmdParts = cmd.split()
+	cmdParts[0] = cmdParts[0].lower()
+	match cmdParts[0]:
+		case Commands.ADMIN.value:
+			return GetAdminReply(bale_msg, ADMIN_IDS)
+		case Commands.HELP.value:
+			return GetHelpReply(bale_msg)
+		case Commands.START.value:
+			return GetStartReply(
+				bale_msg,
+				bale_user,
+				userPool,
+				ADMIN_IDS)
+		case Commands.SHOWCASE.value:
+			return GetShowcaseReply(bale_msg)
+		case Commands.SIGN_IN.value:
+			return GetSiginReply(
+				bale_msg,
+				bale_user,
+				userPool,
+				opPool)
+		case Commands.MY_COURSES.value:
+			pass
+		case _:
+			return GetUnexCommandReply(bale_msg, cmd)
 
 
 def _DispatchText(
-		message: Message,
-		user: User,
+		bale_msg: Message,
+		bale_user: User,
 		text: str | None,
-		) -> Coroutine[Any, Any, Message]:
+		) -> Coroutine[Any, Any, Message] | None:
 	try:
-		operations[user.id].ReplyText(text)
+		return opPool.GetTextReply(bale_msg, bale_user, text)
 	except KeyError:
-		return message.reply(lang.UNEX_DATA)
+		return bale_msg.reply(lang.UNEX_DATA)
 
 
 def _DispatchCallback(
-		message: Message,
-		user: User,
-		callback: str | None,
-		) -> Coroutine[Any, Any, Message]:
-	pass
+		bale_msg: Message,
+		bale_user: User,
+		cb_data: str | None,
+		) -> Coroutine[Any, Any, Message] | None:
+	try:
+		return opPool.GetCallbackReply(bale_msg, bale_user, cb_data)
+	except KeyError:
+		return bale_msg.reply(lang.EXPIRED_CB)
+
+
+opPool._cmdDispatcher = _DispatchCmd
 
 
 # Creating & running the Bot ======================================== 
@@ -128,17 +149,18 @@ async def on_ready():
 	logging.debug(f"{happyEngBot.user.username} is ready to respond!")
 
 @happyEngBot.event
-async def on_message(message: Message):
-	logging.debug('A message is received '.ljust(70, '='))
-	logging.debug(message)
+async def on_message(bale_msg: Message):
+	pass
+	"""logging.debug('A message is received '.ljust(70, '='))
+	logging.debug(message)"""
 	# Looking for empty or None messages...
-	if not message.content:
+	if not bale_msg.content:
 		logging.warning('an empty or None message')
 		return
-	await _Dispatch(
-		message,
-		message.from_user,
-		message.text,
+	await _Reply(
+		bale_msg,
+		bale_msg.from_user,
+		bale_msg.text,
 		InputType.TEXT)
 
 @happyEngBot.event
@@ -154,11 +176,11 @@ async def on_update(update: Update) -> None:
 @happyEngBot.event
 async def on_callback(callback: CallbackQuery) -> None:
 	logging.debug('A callback query is created '.ljust(70, '='))
-	logging.debug(f'User: {callback.from_user}')
+	logging.debug(callback)
 	if not callback.data:
 		logging.info('A callback with no data.')
 		return
-	await _Dispatch(
+	await _Reply(
 		callback.message,
 		callback.from_user,
 		callback.data,
@@ -193,21 +215,30 @@ async def on_successful_payment(
 	logging.debug('A successful payment '.ljust(70, '='))
 	logging.debug(payment)
 
+
+def main() -> None:
+	# Declaring of variables -----------------
+	import asyncio
+	task: asyncio.Task | None
+	# Local functions ------------------------
+	async def _main() -> None:
+		async with happyEngBot:
+			await happyEngBot.connect()
+
+	try:
+		asyncio.run(_main())
+	except KeyboardInterrupt:
+		asyncio.create_task(happyEngBot.close())
+	except SystemExit:
+		asyncio.create_task(happyEngBot.close())
+	finally:
+		userPool.close()
+		DB.Close()
+
+
+if __name__ == '__main__':
+	main()
+
+
 # See https://docs.python-bale-bot.ir/en/stable/event.html
 # to get more information about events!
-
-
-def CloseBot(signal: int, frame: FrameType) -> None:
-	import asyncio
-	async def _CloseBot() -> None:
-		DB.Close()
-		await happyEngBot.close()
-	print('Closing the Bot...')
-	asyncio.create_task(_CloseBot())
-
-signal.signal(signal.SIGINT, CloseBot)
-
-try:
-	happyEngBot.run()
-finally:
-	DB.Close()

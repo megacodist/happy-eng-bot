@@ -18,6 +18,14 @@ PANEL = 'صفحه'
 
 OPERATION = 'فرآیند'
 
+PRODUCTS = 'محصولات'
+
+FIRST_NAME = 'نام کوچک'
+
+LAST_NAME = 'نام خانوادگی'
+
+PHONE = 'موبایل'
+
 CANCEL_OP = f'لغو {OPERATION}'
 
 CONTINUE_OP = f'ادامه {OPERATION}'
@@ -36,14 +44,18 @@ HELP_CMD_INTRO = f'{HELP}: برای نمایش همین {PANEL}'
 
 MY_COURSES = 'دوره های من'
 
-PRODUCTS = 'محصولات'
-
 PRODUCTS_CMD_INTRO = f'{PRODUCTS}: نمایش یک لیست از تمام {PRODUCTS}'
 """The introduction of Products command."""
 
 SIGN_IN = 'ثبت نام'
 
-ENTER_YOUR_FIRST_NAME = 'لطفا نام کوچک خود را وارد کنید:'
+ALREADY_SIGNED_IN = 'شما قبلا ثبت نام کرده اید.'
+
+SIGN_IN_ENTER_FIRST_NAME = f'لطفا {FIRST_NAME} خود را وارد کنید:'
+
+SIGN_IN_ENTER_LAST_NAME = f'لطفا {LAST_NAME} خود را وارد کنید:'
+
+SIGN_IN_ENTER_PHONE = f'لطفا {PHONE} خود را وارد کنید:'
 
 START = f'{PANEL} من'
 """The title of the user panel."""
@@ -64,8 +76,18 @@ UNEX_CMD = "'{}' یک دستور نیست. برای مشاهده فهرست دس
 UNKNOWN_USER = f'{USER} شما ناشناس است'
 """The message to show when the user object is `None`."""
 
-COMMANDS_CMD_INFO = F'{COMMANDS}: برای نامیش خلاصه همه {COMMANDS}'
+SHOWCASE = f'ویترین {PRODUCTS}'
+
+SHOWCASE_CMD_INTRO = F'{COMMANDS}: برای نمایش خلاصه همه {COMMANDS}'
 
 UNEX_DATA = 'شما مجاز به وارد کردن اطلاعات نیستید. اگر در میانه فرآیندی بودید، از ابتدا آن را انجام دهید.'
 
 DISRUPTIVE_CMD = 'شما در حال انجام یک فرآیند هستید. با وارد کردن یک دستور، آن فرآیند لغو می شود.'
+
+CONFIRM_DATA = 'آیا اطلاعات زیر مورد تایید شما می باشد؟'
+
+CONFIRM = 'تایید'
+
+RESTART = 'شروع دوباره'
+
+EXPIRED_CB = 'فرآیند مربوط به این دکمه منقضی شده است.'
