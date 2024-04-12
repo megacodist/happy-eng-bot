@@ -99,35 +99,56 @@ class SDelPool[_SDelType]():
     
     def __contains__(self, __key: ID, /) -> None:
         return __key in self._items
+    
+    def _GetKey(self, __key: ID, /) -> _SDelType:
+        """Gets the member object associated with the key. It raises
+        `KeyError` if the key does not exist. This API does not affect
+        deletion scheduling in any way (scheduling, re-scheduling, or
+        unscheduling).
+        """
+        return self._items[__key]
+    
+    def _SetKey(self, __key: ID, __value: _SDelType, /) -> None:
+        """Sets the member object associated with the key. This API does
+        not affect deletion scheduling in any way (scheduling, re-scheduling,
+        or unscheduling).
+        """
+        self._items[__key] = __value
 
     def _DeleteKey(self, __key: ID, /) -> None:
-        """This member method is called on schedule to remove the
-        specified key.
+        """Removes the specified key from internal data structures. It
+        raises `KeyError` if the key does not exist. This API does not
+        affect deletion scheduling in any way (scheduling, re-scheduling, or
+        unscheduling).
         """
         del self._items[__key]
         del self._timers[__key]
     
     def GetItem(self, __key: ID, /) -> _SDelType:
         """Gets the member object at the specified key and reset deletion
-        scheduling. It raises `KeyError` if key does not exist.
+        scheduling. It raises `KeyError` if key does not exist. It is also
+        possible to use sugar syntax of `a = sdelPool[key]`.
         """
-        item = self._items[__key]
+        item = self._GetKey(__key)
         self.ScheduleDel(__key)
         return item
     
     def SetItem(self, __key: ID, __value: _SDelType, /) -> None:
         """Sets member object at the specified key and schedules it for
-        deletion.
+        deletion. It is also possible to use sugar syntax of
+        `sdelPool[key] = a`.
         """
-        self._items[__key] = __value
+        self._SetKey(__key, __value)
         self.ScheduleDel(__key)
     
     def DelItem(self, __key: ID, /) -> None:
         """Deletes the specified member object with key. It raises
-        `KeyError` if the key does not exist.
+        `KeyError` if the key does not exist. It is possible to use
+        the sugar syntax of `del sdelPool[key]` instead.
         """
         del self._items[__key]
         self.UnscheduleDel(__key)
+        del self._timers[__key]
 
     def ScheduleDel(self, key: ID) -> None:
         """Schedules a key for deletion. If it is already scheduled,
@@ -150,6 +171,13 @@ class SDelPool[_SDelType]():
             if not self._timers[key].cancelled():
                 logging.fatal('E1-1', exc_info=True)
             self._timers[key] = None
+
+
+class LSDelPool(SDelPool):
+    def __init__(self, db: IDatabase) -> None:
+        super().__init__()
+        self._db = db
+        """The database object"""
 
 
 class AbsOperation(ABC):
