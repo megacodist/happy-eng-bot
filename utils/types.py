@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from collections import deque
 import enum
 from typing import Any, Callable, TypeVar
 import logging
@@ -56,6 +57,42 @@ class InputType(enum.IntEnum):
     """Specifies the types of input the end user can enter the Bot."""
     TEXT = 0
     CALLBACK = 1
+    COMMAND = 2
+
+
+class SDelHooks(enum.IntEnum):
+    BEFORE_ACCESS = enum.auto()
+    """These callables are invoked before member access. They accept
+    the hashable arguments of `SDelPool` API and return `None`.
+    """
+    AFTER_ACCESS = enum.auto()
+    """These callables are invoked after member access. The `KeyError`
+    cancels these callables. They accept the hashable arguments of
+    `SDelPool` API and return `None`.
+    """
+    ACCESS_KEY_ERROR = enum.auto()
+    """These callables are invoked when `KeyError` occurred during memeber
+    access. They must accept the hashable arguments of `SDelPool` API and
+    return a boolean value. `True` to suppress `KeyError` or `False` to
+    re-raise it. If there is at least one `True`, the error will be
+    canceled.
+    """
+    BEFORE_ASSIGNMENT = enum.auto()
+    """These callables are invoked before member assignment. They accept
+    the hashable arguments of `SDelPool` API and return `None`.
+    """
+    AFTER_ASSIGNMENT = enum.auto()
+    """These callables are invoked after member assignment. They accept
+    the hashable arguments of `SDelPool` API and return `None`.
+    """
+    BEFORE_DELETION = enum.auto()
+    """These callables are invoked before member deletion. They accept
+    the hashable arguments of `SDelPool` API and return `None`.
+    """
+    AFTER_DELETION = enum.auto()
+    """These callables are invoked after member deletion. They accept
+    the hashable arguments of `SDelPool` API and return `None`.
+    """
 
 
 _Hashable = TypeVar('_Hashable')
@@ -101,6 +138,7 @@ class SDelPool[_Hashable, _SDelType]:
         """The time interval for deletion in seconds."""
         self._items: dict[_Hashable, _SDelType] = {}
         self._timers: dict[_Hashable, TimerHandle] = {}
+        self._hooks: dict[SDelHooks, list[Callable[[_Hashable], None]]] = {}
     
     def __getitem__(self, __key: _Hashable, /) -> _SDelType:
         return self.GetItem(__key)
@@ -122,14 +160,30 @@ class SDelPool[_Hashable, _SDelType]:
         deletion scheduling operations (scheduling, re-scheduling, or
         unscheduling). It raises `KeyError` if the key does not exist.
         """
-        return self._items[__key]
+        #return self._items[__key]
+        for cb in self._hooks[SDelHooks.BEFORE_ACCESS]:
+            cb(__key)
+        try:
+            mem = self._items[__key]
+            for cb in self._hooks[SDelHooks.AFTER_ACCESS]:
+                cb(__key)
+        except KeyError as err:
+            suppression = False
+            for cb in self._hooks[SDelHooks.ACCESS_KEY_ERROR]:
+                suppression |= cb(__key)
+            if not suppression:
+                raise err
     
     def SetItemBypass(self, __key: _Hashable, __value: _SDelType, /) -> None:
         """Sets the member object associated with the key bypassing
         deletion scheduling operations (scheduling, re-scheduling, or
         unscheduling). It raises `KeyError` if the key does not exist.
         """
+        for cb in self._hooks[SDelHooks.BEFORE_ASSIGNMENT]:
+            cb(__key)
         self._items[__key] = __value
+        for cb in self._hooks[SDelHooks.AFTER_ASSIGNMENT]:
+            cb(__key)
 
     def DeleteItemBypass(self, __key: _Hashable, /) -> None:
         """Deletes the specified key from internal data structures. It
@@ -140,8 +194,12 @@ class SDelPool[_Hashable, _SDelType]:
         import logging
         logging.debug(f'Deletion of {__key} key occurred in '
             f'{self.__class__.__qualname__}')
+        for cb in self._hooks[SDelHooks.BEFORE_DELETION]:
+            cb(__key)
         del self._items[__key]
         del self._timers[__key]
+        for cb in self._hooks[SDelHooks.AFTER_DELETION]:
+            cb(__key)
     
     def GetItem(self, __key: _Hashable, /) -> _SDelType:
         """Gets the member object at the specified key and reset deletion
@@ -253,7 +311,68 @@ class LSDelPool(ABC, SDelPool[_Hashable, _SDelType]):
         self._items.clear()
 
 
-class UserPool(LSDelPool[ID, UserData]):
+class UserInput:
+    def __init__(
+            self,
+            bale_msg: Message,
+            type_: InputType,
+            data: str,
+            ) -> None:
+        self.bale_msg = bale_msg
+        self.type_ = type_
+        self.data = data
+
+
+class UserSpace:
+    def __init__(self) -> None:
+        self._inputs: deque[UserInput] = deque()
+        self._baleUser = None
+        self._dbUser: UserData
+        self._op: AbsOperation | None = None
+    
+    def ApendInput(self, ui: UserInput) -> None:
+        self._inputs.append(ui)
+    
+    def CountInputs(self) -> int:
+        """Returns number of inputs."""
+        return len(self._inputs)
+    
+    def ReplyNextInput(self) -> Coroutine[Any, Any, Message] | None:
+        """Gets the reply for the next input. It does nothing if there is
+        no input.
+        """
+        try:
+            input_ = self._inputs[0]
+        except IndexError:
+            return
+        match input_.type_:
+            case InputType.TEXT:
+                return self._GetTextReply()
+            case InputType.CALLBACK:
+                pass
+            case InputType.COMMAND:
+                pass
+    
+    def _GetTextReply(self) -> Coroutine[Any, Any, Message] | None:
+        if self._op:
+            res = self._op.ReplyText(
+                self._inputs[0].bale_msg,
+                self._inputs[0].data)
+            self._inputs.pop()
+            if res.finished:
+                self._op = None
+            return res.reply
+        else:
+            return self._inputs[0].bale_msg.reply(lang.UNEX_DATA)
+    
+    def _GetCbReply(self) -> Coroutine[Any, Any, Message] | None:
+        pass
+    
+    def _GetCmdReply(self) -> Coroutine[Any, Any, Message] | None:
+        pass
+
+
+class UserPool(SDelPool[ID, UserSpace]):
     def __init__(
             self,
             db: IDatabase,
@@ -261,8 +380,11 @@ class UserPool(LSDelPool[ID, UserData]):
             del_timint=20,
             ) -> None:
         super().__init__(db, del_timint=del_timint)
+        self._db = db
+        self._hooks[SDelHooks.BEFORE_DELETION].append(self._Save)
+        self._hooks[SDelHooks.ACCESS_KEY_ERROR].append(self._Load)
     
-    def Load(self, key: int) -> UserData:
+    def _Load(self, key: int) -> UserData:
         userData = self._db.GetUser(key)
         if userData is None:
             raise KeyError()
@@ -270,9 +392,19 @@ class UserPool(LSDelPool[ID, UserData]):
             f'{self.__class__.__qualname__}')
         return userData
     
-    def Save(self, key: ID) -> None:
+    def _Save(self, key: ID) -> None:
         self._db.UpsertUser(self._items[key])
         logging.debug(f'{self._items[key]} saved to the database.')
+
+
+class OpResult:
+    def __init__(
+            self,
+            reply: Coroutine[Any, Any, Message] | None,
+            finished: bool,
+            ) -> None:
+        self.reply = reply
+        self.finished = finished
 
 
 class AbsOperation(ABC):
@@ -361,7 +493,7 @@ class AbsOperation(ABC):
     def Start(
             self,
             message: Message
-            )  -> tuple[Coroutine[Any, Any, Message] | None, bool]:
+            )  -> OpResult:
         """Starts this operation."""
         pass
 
@@ -370,7 +502,7 @@ class AbsOperation(ABC):
             self,
             message: Message,
             text: str,
-            ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
+            ) -> OpResult:
         """Optionally replies the provided text. It must return `True` if
         the operation finished otherwise `False`.
         """
@@ -380,7 +512,7 @@ class AbsOperation(ABC):
             self,
             message: Message,
             cb: str,
-            ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
+            ) -> OpResult:
         """Optionally replies the provided callback. It must return `True`
         if the operation finished otherwise `False`. Callback data are in the
         format of `<uid>-<cbnum>-<optional>`. The `Uid` must be eliminated
@@ -424,7 +556,7 @@ class SigninOp(AbsOperation):
             self,
             message: Message,
             text: str,
-            ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
+            ) -> OpResult:
         """Gets from user and fills folowing items in consecutive calls:
         1. first name
         2. last name
@@ -435,7 +567,7 @@ class SigninOp(AbsOperation):
         if self._firstName is None:
             self._firstName = text
             self._AppendRestartBtn(buttons)
-            return (
+            return OpResult(
                 self.Reply(
                     message.reply,
                     lang.SIGN_IN_ENTER_LAST_NAME,
@@ -444,7 +576,7 @@ class SigninOp(AbsOperation):
         elif self._lastName is None:
             self._lastName = text
             self._AppendRestartBtn(buttons)
-            return (
+            return OpResult(
                 self.Reply(
                     message.reply,
                     lang.SIGN_IN_ENTER_PHONE,
@@ -468,18 +600,18 @@ class SigninOp(AbsOperation):
                 self._lastName,
                 lang.PHONE,
                 self._phone)
-            return (
+            return OpResult(
                 self.Reply(message.reply, response, components=buttons),
                 False,)
         else:
             logging.error('E1-3')
-            return (None, False,)
+            return OpResult(None, False,)
 
     def ReplyCallback(
             self,
             bale_msg: Message,
             cb_data: str,
-            ) -> tuple[Coroutine[Any, Any, Message] | None, bool]:
+            ) -> OpResult:
         match cb_data:
             case self.CONFIRM_CBD:
                 self._userPool[self._baleId] = UserData(
@@ -487,21 +619,22 @@ class SigninOp(AbsOperation):
                     self._firstName,
                     self._lastName,
                     self._phone)
-                return (self.Reply(None), True,)
+                return OpResult(self.Reply(None), True,)
             case self.RESTART_CBD:
                 self._firstName = None
                 self._lastName = None
                 self._phone = None
-                return (self.Reply(self.Start, bale_msg), False,)
+                return OpResult(self.Reply(self.Start, bale_msg), False,)
             case _:
                 logging.error(f'{cb_data}: unknown callback in '
                     f'{self.__class__.__qualname__}')
-                return (None, False,)
+                return OpResult(None, False,)
     
     def _AppendRestartBtn(self, buttons: InlineKeyboardMarkup) -> None:
+        """Appends 'Restart' button to the `buttons`."""
         buttons.add(InlineKeyboardButton(
-        lang.RESTART,
-        callback_data=f'{self.RESTART_CBD}'))
+            lang.RESTART,
+            callback_data=f'{self.RESTART_CBD}'))
 
 
 class OperationPool(SDelPool[ID, AbsOperation]):

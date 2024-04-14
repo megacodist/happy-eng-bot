@@ -3,15 +3,12 @@
 #
 
 import asyncio
-from typing import Any, Callable
+from collections import deque
 
 
 def main() -> None:
-    import sqlite3
-    from utils.types import LSDelPool
-    conn = sqlite3.connect(r'db.db3')
-    objPool = LSDelPool(conn)
-    objPool.Save(12)
+    dq = deque()
+    dq[0]
 
 
 if __name__ == '__main__':

@@ -18,7 +18,7 @@ from panels import (
 	GetStartReply ,GetUnexCommandReply, GetSiginReply)
 from utils.types import (
     AbsOperation, Commands, HappyEngBot, ID, InputType, OperationPool,
-	SDelPool, UserData,	UserPool)
+	SDelPool, UserData,	UserInput, UserPool)
 
 
 # Bot-wide variables & contants =====================================
@@ -42,35 +42,30 @@ with open(APP_DIR / 'config.toml', mode='rb') as tomlObj:
 DB: IDatabase = SqliteDb(APP_DIR / 'db.db3')
 """The database."""
 
-userPool = UserPool(DB)
+pUsers = UserPool(DB)
 """A mapping of `ID -> UserData` contains all information of recent users
 of the Bot.
 """
 
-opPool = OperationPool(userPool, None)
+opPool = OperationPool(pUsers, None)
 """The ongoing operations."""
 
 
 # Reply functions =========================================
 async def _Reply(
-		message: Message,
+		bale_msg: Message,
 		bale_user: User,
-		input_: str | None,
 		type_: InputType,
+		input_: str | None,
 		) -> Coroutine[Any, Any, None]:
 	"""Disptaches the user input."""
-	# Getting reply...
-	if input_.startswith('/'):
-		reply = _DispatchCmd(message, bale_user, input_)
-	elif type_ == InputType.TEXT:
-		reply = _DispatchText(message, bale_user, input_)
-	elif type_ == InputType.CALLBACK:
-		reply = _DispatchCallback(message, bale_user, input_)
-	else:
-		logging.error('E1-2', exc_info=True)
-	# Returning reply to the user...
-	if reply:
-		await reply
+	inputExists = pUsers[bale_user.id].CountInputs() > 0
+	pUsers[bale_user.id].ApendInput(UserInput(bale_msg, type_, input_))
+	pUsers[bale_user.id]._baleUser = bale_user
+	if inputExists:
+		return
+	while pUsers[bale_user.id].CountInputs() > 0:
+		await
 
 
 def _DispatchCmd(
@@ -95,7 +90,7 @@ def _DispatchCmd(
 			return GetStartReply(
 				bale_msg,
 				bale_user,
-				userPool,
+				pUsers,
 				ADMIN_IDS)
 		case Commands.SHOWCASE.value:
 			return GetShowcaseReply(bale_msg)
@@ -103,7 +98,7 @@ def _DispatchCmd(
 			return GetSiginReply(
 				bale_msg,
 				bale_user,
-				userPool,
+				pUsers,
 				opPool)
 		case Commands.MY_COURSES.value:
 			pass
@@ -150,18 +145,22 @@ async def on_ready():
 
 @happyEngBot.event
 async def on_message(bale_msg: Message):
-	pass
-	"""logging.debug('A message is received '.ljust(70, '='))
-	logging.debug(message)"""
 	# Looking for empty or None messages...
 	if not bale_msg.content:
 		logging.warning('an empty or None message')
 		return
-	await _Reply(
-		bale_msg,
-		bale_msg.from_user,
-		bale_msg.text,
-		InputType.TEXT)
+	if bale_msg.content.startswith('/'):
+		await _Reply(
+			bale_msg,
+			bale_msg.from_user,
+			InputType.COMMAND,
+			bale_msg.text,)
+	else:
+		await _Reply(
+			bale_msg,
+			bale_msg.from_user,
+			InputType.TEXT,
+			bale_msg.text,)
 
 @happyEngBot.event
 async def on_message_edit(message: Message) -> None:
@@ -232,7 +231,7 @@ def main() -> None:
 	except SystemExit:
 		asyncio.create_task(happyEngBot.close())
 	finally:
-		userPool.close()
+		pUsers.close()
 		DB.Close()
 
 
