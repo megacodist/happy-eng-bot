@@ -9,7 +9,7 @@ from typing import Any, Callable, Coroutine
 
 from bale import Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment
 
-from app_utils import ConfigureLogging
+from logger import ConfigureLogging
 from db import IDatabase
 from db.sqlite3 import SqliteDb
 import lang

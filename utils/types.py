@@ -22,23 +22,9 @@ from typing import Any, Coroutine, TypeVar
 from bale import (
     Bot, Message, User, InlineKeyboardButton, InlineKeyboardMarkup)
 
+from cmds import AbsWizard
 from db import ID, IDatabase, UserData
 import lang
-
-
-class HappyEngBot(Bot):
-    def __init__(
-            self,
-            token: str,
-            db: IDatabase,
-            user_pool: UserPool,
-            op_pool: OperationPool,
-            **kwargs,
-            ) -> None:
-        super().__init__(token, **kwargs)
-        self.db = db
-        self.user_pool = user_pool
-        self.op_pool = op_pool
 
 
 class Commands(enum.Enum):
@@ -328,7 +314,7 @@ class UserSpace:
         self._inputs: deque[UserInput] = deque()
         self._baleUser = None
         self._dbUser: UserData
-        self._op: AbsOperation | None = None
+        self._wizard: AbsWizard | None = None
     
     def ApendInput(self, ui: UserInput) -> None:
         self._inputs.append(ui)
@@ -336,6 +322,18 @@ class UserSpace:
     def CountInputs(self) -> int:
         """Returns number of inputs."""
         return len(self._inputs)
+    
+    def GetFirstInput(self) -> UserInput:
+        """Gets first input from the queue without poping it. It raises
+        `IndexError` if the queue is empty.
+        """
+        return self._inputs[0]
+    
+    def PopFirstInput(self) -> UserInput:
+        """Gets and removes first input from the queue. It raises
+        `IndexError` if the queue is empty.
+        """
+        return self._inputs.popleft()
     
     def ReplyNextInput(self) -> Coroutine[Any, Any, Message] | None:
         """Gets the reply for the next input. It does nothing if there is
@@ -397,244 +395,7 @@ class UserPool(SDelPool[ID, UserSpace]):
         logging.debug(f'{self._items[key]} saved to the database.')
 
 
-class OpResult:
-    def __init__(
-            self,
-            reply: Coroutine[Any, Any, Message] | None,
-            finished: bool,
-            ) -> None:
-        self.reply = reply
-        self.finished = finished
 
-
-class AbsOperation(ABC):
-    """Abstract base class for operations in the Bot. Implementations
-    must avoid returning replies directly but rather use `Reply` method.
-    Objects of this type supports the followings:
-
-    1. hash protocol
-    2. equality comparison
-    """
-    _nId = 1
-    """This attribute is used to produce unique id in `GenerateUid` class
-    method.
-    """
-
-    @classmethod
-    def GenerateUid(cls) -> int:
-        """Generates a unique id. This uniqueness is guaranteed among
-        all instances of this class even deleted ones.
-        """
-        uid = cls._nId
-        cls._nId += 1
-        if cls._nId > 0xff_ff_ff_ff:
-            cls._nId = 1
-        return uid
-    
-    def __init__(
-            self,
-            user_data: UserData | None = None
-            ) -> None:
-        """Initializes a new operation which can be optionally associated
-        with a user.
-        """
-        self._UID = AbsOperation.GenerateUid()
-        """The unique ID of this operation."""
-        self._userData = user_data
-        """The optional user data associated with this operation."""
-        self._lastReply: Coroutine[Any, Any, Message] | None = None
-        """The last reply of the operation."""
-    
-    def __hash__(self) -> int:
-        return self._UID
-
-    def __eq__(self, __obj, /) -> bool:
-        if isinstance(__obj, AbsOperation):
-            return self._UID == __obj._UID
-        return NotImplemented
-    
-    @property
-    def Uid(self) -> int:
-        """Returns the unique ID of this operation."""
-        return self._UID
-    
-    @property
-    def UserData(self) -> UserData | None:
-        """Gets the optional user data associated with this operation."""
-        return self._userData
-    
-    @property
-    def LastReply(self) -> Coroutine[Any, Any, Message] | None:
-        """Gets the last reply of the operation."""
-        return self._lastReply
-    
-    def Reply(
-            self,
-            __coro: Coroutine[Any, Any, Message] | None,
-            /,
-            *args,
-            **kwargs,
-            ) -> Coroutine[Any, Any, Message] | None:
-        """Saves the last reply and returns it."""
-        from functools import partial
-        if __coro is None:
-            self._lastReply = None
-        else:
-            self._lastReply = partial(__coro, *args, **kwargs)
-        return self.GetLastReply()
-    
-    def GetLastReply(self) -> Coroutine[Any, Any, Message] | None:
-        if self._lastReply is None:
-            return None
-        else:
-            return self._lastReply()
-    
-    @abstractmethod
-    def Start(
-            self,
-            message: Message
-            )  -> OpResult:
-        """Starts this operation."""
-        pass
-
-    @abstractmethod
-    def ReplyText(
-            self,
-            message: Message,
-            text: str,
-            ) -> OpResult:
-        """Optionally replies the provided text. It must return `True` if
-        the operation finished otherwise `False`.
-        """
-        pass
-
-    def ReplyCallback(
-            self,
-            message: Message,
-            cb: str,
-            ) -> OpResult:
-        """Optionally replies the provided callback. It must return `True`
-        if the operation finished otherwise `False`. Callback data are in the
-        format of `<uid>-<cbnum>-<optional>`. The `Uid` must be eliminated
-        by operation manager and the rest must be fed into this method.
-        """
-        pass
-
-
-class SigninOp(AbsOperation):
-    """Encapsulates a sign-in operation in the Bot. You should start
-    this operation by calling `Start` method.
-    """
-
-    CONFIRM_CBD = '10'
-
-    RESTART_CBD = '11'
-
-    def __init__(
-            self,
-            bale_id: ID,
-            user_pool: UserPool,
-            ) -> None:
-        """Initializes a new instance of the sign-in operation with the
-        Bale ID of the user.
-        """
-        super().__init__()
-        self._baleId = bale_id
-        """The Bale ID of the user."""
-        self._userPool = user_pool
-        self._firstName: str | None = None
-        self._lastName: str | None = None
-        self._phone: str | None = None
-
-    def Start(
-            self,
-            message: Message
-            ) -> Coroutine[Any, Any, Message]:
-        return self.Reply(message.reply, lang.SIGN_IN_ENTER_FIRST_NAME)
-
-    def ReplyText(
-            self,
-            message: Message,
-            text: str,
-            ) -> OpResult:
-        """Gets from user and fills folowing items in consecutive calls:
-        1. first name
-        2. last name
-        3. e-mail
-        4. phone no.
-        """
-        buttons = InlineKeyboardMarkup()
-        if self._firstName is None:
-            self._firstName = text
-            self._AppendRestartBtn(buttons)
-            return OpResult(
-                self.Reply(
-                    message.reply,
-                    lang.SIGN_IN_ENTER_LAST_NAME,
-                    components=buttons),
-                False)
-        elif self._lastName is None:
-            self._lastName = text
-            self._AppendRestartBtn(buttons)
-            return OpResult(
-                self.Reply(
-                    message.reply,
-                    lang.SIGN_IN_ENTER_PHONE,
-                    components=buttons),
-                False)
-        elif self._phone is None:
-            # Saving data to 'phone'...
-            self._phone = text
-            # Confirming all data...
-            buttons.add(InlineKeyboardButton(
-                lang.CONFIRM,
-                callback_data=f'{self.CONFIRM_CBD}'))
-            buttons.add(InlineKeyboardButton(
-                lang.RESTART,
-                callback_data=f'{self.RESTART_CBD}'))
-            response = '{0}\n{1}: {2}\n{3}: {4}\n{5}: {6}'.format(
-                lang.CONFIRM_DATA,
-                lang.FIRST_NAME,
-                self._firstName,
-                lang.LAST_NAME,
-                self._lastName,
-                lang.PHONE,
-                self._phone)
-            return OpResult(
-                self.Reply(message.reply, response, components=buttons),
-                False,)
-        else:
-            logging.error('E1-3')
-            return OpResult(None, False,)
-
-    def ReplyCallback(
-            self,
-            bale_msg: Message,
-            cb_data: str,
-            ) -> OpResult:
-        match cb_data:
-            case self.CONFIRM_CBD:
-                self._userPool[self._baleId] = UserData(
-                    self._baleId,
-                    self._firstName,
-                    self._lastName,
-                    self._phone)
-                return OpResult(self.Reply(None), True,)
-            case self.RESTART_CBD:
-                self._firstName = None
-                self._lastName = None
-                self._phone = None
-                return OpResult(self.Reply(self.Start, bale_msg), False,)
-            case _:
-                logging.error(f'{cb_data}: unknown callback in '
-                    f'{self.__class__.__qualname__}')
-                return OpResult(None, False,)
-    
-    def _AppendRestartBtn(self, buttons: InlineKeyboardMarkup) -> None:
-        """Appends 'Restart' button to the `buttons`."""
-        buttons.add(InlineKeyboardButton(
-            lang.RESTART,
-            callback_data=f'{self.RESTART_CBD}'))
 
 
 class OperationPool(SDelPool[ID, AbsOperation]):

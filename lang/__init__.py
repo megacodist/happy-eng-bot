@@ -51,12 +51,6 @@ SIGN_IN = 'ثبت نام'
 
 ALREADY_SIGNED_IN = 'شما قبلا ثبت نام کرده اید.'
 
-SIGN_IN_ENTER_FIRST_NAME = f'لطفا {FIRST_NAME} خود را وارد کنید:'
-
-SIGN_IN_ENTER_LAST_NAME = f'لطفا {LAST_NAME} خود را وارد کنید:'
-
-SIGN_IN_ENTER_PHONE = f'لطفا {PHONE} خود را وارد کنید:'
-
 START = f'{PANEL} من'
 """The title of the user panel."""
 
