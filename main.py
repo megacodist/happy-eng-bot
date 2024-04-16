@@ -7,26 +7,26 @@ import logging
 from pathlib import Path
 from typing import Any, Callable, Coroutine
 
-from bale import Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment
+from bale import (
+    Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment)
 
-from logger import ConfigureLogging
+from cmds import Page, AbsWizard
 from db import IDatabase
 from db.sqlite3 import SqliteDb
-import lang
+from logger import ConfigureLogging
 from panels import (
 	GetAdminReply, GetHelpReply, GetShowcaseReply, GetUnexDataReply,
 	GetStartReply ,GetUnexCommandReply, GetSiginReply)
 from utils.types import (
-    AbsOperation, Commands, HappyEngBot, ID, InputType, OperationPool,
-	SDelPool, UserData,	UserInput, UserPool)
+    Commands, InputType, UserInput, UserPool)
 
 
 # Bot-wide variables & contants =====================================
-APP_DIR = Path(__file__).resolve().parent
+_APP_DIR = Path(__file__).resolve().parent
 """The directory of the Bot."""
 
 # Configuring the logger ============================================
-ConfigureLogging(APP_DIR / 'log.log')
+ConfigureLogging(_APP_DIR / 'log.log')
 
 # Preparing global variables ========================================
 import tomllib
@@ -34,25 +34,50 @@ ADMIN_IDS: tuple[int, ...]
 """A tuple of ID's of admin users."""
 _TOKEN: str
 """The token of the Bale bot."""
-with open(APP_DIR / 'config.toml', mode='rb') as tomlObj:
+with open(_APP_DIR / 'config.toml', mode='rb') as tomlObj:
 	settings = tomllib.load(tomlObj)
 	ADMIN_IDS = settings['ADMIN_IDS']
 	_TOKEN = settings['BALE_BOT_TOKEN']
 
-DB: IDatabase = SqliteDb(APP_DIR / 'db.db3')
-"""The database."""
+db: IDatabase = SqliteDb(_APP_DIR / 'db.db3')
+"""The database of the Bot."""
 
-pUsers = UserPool(DB)
+pUsers = UserPool(db)
 """A mapping of `ID -> UserData` contains all information of recent users
 of the Bot.
 """
 
-opPool = OperationPool(pUsers, None)
-"""The ongoing operations."""
+pages: dict[str, Callable] = {}
+
+wizards: dict[str, AbsWizard] = {}
+
+# Loading pages & wizards ===========================================
+from importlib import import_module
+modsDir = _APP_DIR / 'cmds'
+modNames = list(modsDir.glob('*.py'))
+try:
+	modNames.remove(Path('__init__.py'))
+except ValueError:
+	pass
+botVars = {
+	'ADMIN_IDS': ADMIN_IDS,
+	'db': db,
+	'pUsers': pUsers,}
+for modName in modNames:
+	modObj = import_module(f'cmds.{modName.stem}')
+	try:
+		modObj.InitializeModule(**botVars)
+		modPages: tuple[Page, ...] = modObj.GetPages()
+		modWizards: tuple[AbsWizard, ...] = modObj.GetWizards()
+	except Exception:
+		logging.error(f'E1-2: {modName.absolute()}')
+	else:
+		pages.update(modPages)
+		wizards.update(modWizards)
 
 
 # Reply functions =========================================
-async def _Reply(
+async def _DispatchInput(
 		bale_msg: Message,
 		bale_user: User,
 		type_: InputType,
@@ -65,7 +90,7 @@ async def _Reply(
 	if inputExists:
 		return
 	while pUsers[bale_user.id].CountInputs() > 0:
-		await
+		await pUsers[bale_user.id].ReplyNextInput()
 
 
 def _DispatchCmd(
@@ -106,28 +131,6 @@ def _DispatchCmd(
 			return GetUnexCommandReply(bale_msg, cmd)
 
 
-def _DispatchText(
-		bale_msg: Message,
-		bale_user: User,
-		text: str | None,
-		) -> Coroutine[Any, Any, Message] | None:
-	try:
-		return opPool.GetTextReply(bale_msg, bale_user, text)
-	except KeyError:
-		return bale_msg.reply(lang.UNEX_DATA)
-
-
-def _DispatchCallback(
-		bale_msg: Message,
-		bale_user: User,
-		cb_data: str | None,
-		) -> Coroutine[Any, Any, Message] | None:
-	try:
-		return opPool.GetCallbackReply(bale_msg, bale_user, cb_data)
-	except KeyError:
-		return bale_msg.reply(lang.EXPIRED_CB)
-
-
 opPool._cmdDispatcher = _DispatchCmd
 
 
@@ -150,13 +153,13 @@ async def on_message(bale_msg: Message):
 		logging.warning('an empty or None message')
 		return
 	if bale_msg.content.startswith('/'):
-		await _Reply(
+		await _DispatchInput(
 			bale_msg,
 			bale_msg.from_user,
 			InputType.COMMAND,
 			bale_msg.text,)
 	else:
-		await _Reply(
+		await _DispatchInput(
 			bale_msg,
 			bale_msg.from_user,
 			InputType.TEXT,
@@ -179,7 +182,7 @@ async def on_callback(callback: CallbackQuery) -> None:
 	if not callback.data:
 		logging.info('A callback with no data.')
 		return
-	await _Reply(
+	await _DispatchInput(
 		callback.message,
 		callback.from_user,
 		callback.data,
@@ -232,7 +235,7 @@ def main() -> None:
 		asyncio.create_task(happyEngBot.close())
 	finally:
 		pUsers.close()
-		DB.Close()
+		db.Close()
 
 
 if __name__ == '__main__':

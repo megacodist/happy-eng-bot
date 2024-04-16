@@ -8,6 +8,7 @@ from typing import Any, Coroutine
 from bale import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from . import AbsWizard, Page, WizardRes
+from db import UserData
 import lang as strs
 import lang.cmds.cmds1 as cmds1_strs
 from utils.types import ID, UserPool
@@ -16,7 +17,7 @@ from utils.types import ID, UserPool
 pUsers: UserPool
 
 
-def InitializeModule(*, user_pool: UserPool) -> None:
+def InitializeModule(*, user_pool: UserPool, **kwargs) -> None:
     """Initializes the module."""
     global pUsers
     pUsers = user_pool
@@ -112,14 +113,10 @@ class SigninWiz(AbsWizard):
             logging.error('E1-3')
             return WizardRes(None, False,)
 
-    def ReplyCallback(
-            self,
-            bale_msg: Message,
-            cb_data: str,
-            ) -> WizardRes:
-        match cb_data:
+    def ReplyCallback(self) -> WizardRes:
+        match pUsers[self._baleId].GetFirstInput().data:
             case self.CONFIRM_CBD:
-                self._userPool[self._baleId] = UserData(
+                pUsers[self._baleId]._dbUser = UserData(
                     self._baleId,
                     self._firstName,
                     self._lastName,
@@ -129,7 +126,7 @@ class SigninWiz(AbsWizard):
                 self._firstName = None
                 self._lastName = None
                 self._phone = None
-                return WizardRes(self.Reply(self.Start, bale_msg), False,)
+                return WizardRes(self.Reply(self.Start), False,)
             case _:
                 logging.error(f'{cb_data}: unknown callback in '
                     f'{self.__class__.__qualname__}')

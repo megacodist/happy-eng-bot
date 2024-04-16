@@ -5,8 +5,6 @@
 including:
 
 1. `ConfigureLogging`: Configures the logger for saving events to a file.
-2. `LoadLangs`: Loads `names` and `strings` variables of all installed
-languages.
 """
 
 import logging

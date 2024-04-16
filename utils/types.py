@@ -340,31 +340,36 @@ class UserSpace:
         no input.
         """
         try:
-            input_ = self._inputs[0]
+            input_ = self.GetFirstInput()
         except IndexError:
             return
         match input_.type_:
             case InputType.TEXT:
                 return self._GetTextReply()
             case InputType.CALLBACK:
-                pass
+                return self._GetCbReply()
             case InputType.COMMAND:
-                pass
+                return self._GetCmdReply()
     
     def _GetTextReply(self) -> Coroutine[Any, Any, Message] | None:
-        if self._op:
-            res = self._op.ReplyText(
-                self._inputs[0].bale_msg,
-                self._inputs[0].data)
-            self._inputs.pop()
+        if self._wizard:
+            res = self._wizard.ReplyText()
+            self.PopFirstInput()
             if res.finished:
-                self._op = None
+                self._wizard = None
             return res.reply
         else:
-            return self._inputs[0].bale_msg.reply(lang.UNEX_DATA)
+            return  self.GetFirstInput().bale_msg.reply(lang.UNEX_DATA)
     
     def _GetCbReply(self) -> Coroutine[Any, Any, Message] | None:
-        pass
+        if self._wizard:
+            res = self._wizard.ReplyCallback()
+            self.PopFirstInput()
+            if res.finished:
+                self._wizard = None
+            return res.reply
+        else:
+            return self.GetFirstInput().bale_msg.reply(lang.EXPIRED_CB)
     
     def _GetCmdReply(self) -> Coroutine[Any, Any, Message] | None:
         pass

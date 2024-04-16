@@ -9,7 +9,7 @@ from typing import Any, Callable, Coroutine
 
 from bale import Message
 
-from utils.types import ID
+from db import ID
 
 
 class Page:
@@ -58,9 +58,11 @@ class AbsWizard(ABC):
             cls._nId = 1
         return uid
     
-    def __init__(self) -> None:
+    def __init__(self, bale_id: ID) -> None:
         self._UID = self.GenerateUid()
         """The unique ID of this operation."""
+        self._baleId = bale_id
+        """The ID of the user in the Bale."""
         self._lastReply: Coroutine[Any, Any, Message] | None = None
         """The last reply of the operation."""
     
@@ -104,29 +106,18 @@ class AbsWizard(ABC):
             return self._lastReply()
     
     @abstractmethod
-    def Start(
-            self,
-            message: Message
-            )  -> WizardRes:
+    def Start(self)  -> WizardRes:
         """Starts this operation."""
         pass
 
     @abstractmethod
-    def ReplyText(
-            self,
-            message: Message,
-            text: str,
-            ) -> WizardRes:
+    def ReplyText(self) -> WizardRes:
         """Optionally replies the provided text. It must return `True` if
         the operation finished otherwise `False`.
         """
         pass
 
-    def ReplyCallback(
-            self,
-            message: Message,
-            cb: str,
-            ) -> WizardRes:
+    def ReplyCallback(self) -> WizardRes:
         """Optionally replies the provided callback. It must return `True`
         if the operation finished otherwise `False`. Callback data are in the
         format of `<uid>-<cbnum>-<optional>`. The `Uid` must be eliminated
