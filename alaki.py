@@ -10,13 +10,17 @@ class Foo(object):
         print(__val1,)
 
 
+def Baz() -> None:
+    pass
+
+
 def main() -> None:
-    interval = timedelta(seconds=-1)
-    print(interval)
-    date_ = date.today()
-    print(date_.toordinal())
+    for obj in (Foo, Baz,):
+        print(obj.__name__.ljust(70, '='))
+        maxLen = max(len(attr) for attr in dir(obj))
+        for attr in dir(obj):
+            print(f'{attr:>{maxLen}}: {getattr(obj, attr)}')
 
 
 if __name__ == '__main__':
-    b = Foo()
-    b[1, 2]
+    main()

@@ -40,6 +40,8 @@ Admin Panel.
 
 HELP = 'راهنمایی'
 
+HELP_ALL_CMDS = 'فهرست تمامی دستورات:'
+
 HELP_CMD_INTRO = f'{HELP}: برای نمایش همین {PANEL}'
 
 MY_COURSES = 'دوره های من'

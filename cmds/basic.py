@@ -3,34 +3,52 @@
 #
 
 import logging
-from typing import Any, Coroutine
+from typing import Any, Callable, Coroutine
 
 from bale import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from . import AbsWizard, Page, WizardRes
 from db import UserData
 import lang as strs
-import lang.cmds.cmds1 as cmds1_strs
+import lang.cmds.basic as basic_strs
 from utils.types import ID, UserPool
 
 
+# Module variables ==================================================
 pUsers: UserPool
 
+pages: dict[str, Callable[[ID], Coroutine[Any, Any, Message]]]
 
-def InitializeModule(*, user_pool: UserPool, **kwargs) -> None:
+
+def InitializeModule(
+        *,
+        user_pool: UserPool,
+        pages: dict[str, Callable[[ID], Coroutine[Any, Any, Message]]],
+        **kwargs
+        ) -> None:
     """Initializes the module."""
     global pUsers
+    global pages
     pUsers = user_pool
+    pages = 
 
 
 def GetPages() -> tuple[Page, ...]:
     """Gets a tuple of all implemented `Page`s in this module."""
-    return tuple()
+    return tuple([Page('/help', GetHelpReply)])
 
 
 def GetWizards() -> tuple[AbsWizard, ...]:
     """Gets a tuple of all implemented `Wizard`s in this module."""
     return tuple([SigninWiz,])
+
+
+def GetHelpReply(bale_id: ID) -> Coroutine[Any, Any, Message]:
+    """Gets a list of all available commands."""
+    global pUsers
+    global pa
+    text = strs.HELP_ALL_CMDS + '\n' + '\n'.join()
+    return pUsers[bale_id].GetFirstInput().bale_msg.reply()
 
 
 class SigninWiz(AbsWizard):
@@ -39,9 +57,9 @@ class SigninWiz(AbsWizard):
     """
     CMD = '/signin'
 
-    CONFIRM_CBD = '10'
+    _CONFIRM_CBD = '10'
 
-    RESTART_CBD = '11'
+    _RESTART_CBD = '11'
 
     def __init__(self, bale_id: ID) -> None:
         """Initializes a new instance of the sign-in operation with the
@@ -57,7 +75,7 @@ class SigninWiz(AbsWizard):
     def Start(self) -> Coroutine[Any, Any, Message]:
         return self.Reply(
             pUsers[self._baleId].GetFirstInput().bale_msg,
-            cmds1_strs.SIGN_IN_ENTER_FIRST_NAME)
+            basic_strs.SIGN_IN_ENTER_FIRST_NAME)
 
     def ReplyText(self) -> WizardRes:
         """Gets from user and fills folowing items in consecutive calls:
@@ -73,7 +91,7 @@ class SigninWiz(AbsWizard):
             return WizardRes(
                 self.Reply(
                     pUsers[self._baleId].GetFirstInput().bale_msg.reply,
-                    cmds1_strs.SIGN_IN_ENTER_LAST_NAME,
+                    basic_strs.SIGN_IN_ENTER_LAST_NAME,
                     components=buttons),
                 False)
         elif self._lastName is None:
@@ -82,7 +100,7 @@ class SigninWiz(AbsWizard):
             return WizardRes(
                 self.Reply(
                     pUsers[self._baleId].GetFirstInput().bale_msg.reply,
-                    cmds1_strs.SIGN_IN_ENTER_PHONE,
+                    basic_strs.SIGN_IN_ENTER_PHONE,
                     components=buttons),
                 False)
         elif self._phone is None:
@@ -91,17 +109,17 @@ class SigninWiz(AbsWizard):
             # Confirming all data...
             buttons.add(InlineKeyboardButton(
                 strs.CONFIRM,
-                callback_data=f'{self.CONFIRM_CBD}'))
+                callback_data=f'{self._CONFIRM_CBD}'))
             buttons.add(InlineKeyboardButton(
                 strs.RESTART,
-                callback_data=f'{self.RESTART_CBD}'))
+                callback_data=f'{self._RESTART_CBD}'))
             response = '{0}\n{1}: {2}\n{3}: {4}\n{5}: {6}'.format(
                 strs.CONFIRM_DATA,
-                cmds1_strs.FIRST_NAME,
+                basic_strs.FIRST_NAME,
                 self._firstName,
-                cmds1_strs.LAST_NAME,
+                basic_strs.LAST_NAME,
                 self._lastName,
-                cmds1_strs.PHONE,
+                basic_strs.PHONE,
                 self._phone)
             return WizardRes(
                 self.Reply(
@@ -115,14 +133,14 @@ class SigninWiz(AbsWizard):
 
     def ReplyCallback(self) -> WizardRes:
         match pUsers[self._baleId].GetFirstInput().data:
-            case self.CONFIRM_CBD:
+            case self._CONFIRM_CBD:
                 pUsers[self._baleId]._dbUser = UserData(
                     self._baleId,
                     self._firstName,
                     self._lastName,
                     self._phone)
                 return WizardRes(self.Reply(None), True,)
-            case self.RESTART_CBD:
+            case self._RESTART_CBD:
                 self._firstName = None
                 self._lastName = None
                 self._phone = None
@@ -135,7 +153,7 @@ class SigninWiz(AbsWizard):
     def _AppendRestartBtn(self, buttons: InlineKeyboardMarkup) -> None:
         """Appends 'Restart' button to the `buttons`."""
         buttons.add(InlineKeyboardButton(
-            lang.RESTART,
-            callback_data=f'{self.RESTART_CBD}'))
+            strs.RESTART,
+            callback_data=f'{self._RESTART_CBD}'))
 
 
