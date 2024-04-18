@@ -12,12 +12,7 @@ from bale import (
 
 from cmds import Page, AbsWizard
 from db import IDatabase
-from logger import ConfigureLogging
-from panels import (
-	GetAdminReply, GetHelpReply, GetShowcaseReply, GetUnexDataReply,
-	GetStartReply ,GetUnexCommandReply, GetSiginReply)
-from utils.types import (
-    Commands, InputType, UserInput, UserPool)
+from utils.types import InputType, UserInput, UserPool
 
 
 # Module-wide variables & contants ==================================
@@ -52,10 +47,6 @@ def _LoadConfig() -> None:
 	global ADMIN_IDS
 	global _TOKEN
 	# Functionality ---------------------------------------
-	ADMIN_IDS: tuple[int, ...]
-	"""A tuple of ID's of admin users."""
-	_TOKEN: str
-	"""The token of the Bale bot."""
 	with open(_APP_DIR / 'config.toml', mode='rb') as tomlObj:
 		settings = tomllib.load(tomlObj)
 		ADMIN_IDS = settings['ADMIN_IDS']
@@ -91,6 +82,7 @@ async def _DispatchInput(
 
 def _LoadPagesWizards() -> None:
 	# Declaring variables ---------------------------------
+	import cmds
 	from importlib import import_module
 	from types import ModuleType
 	global ADMIN_IDS
@@ -103,22 +95,28 @@ def _LoadPagesWizards() -> None:
 	modName: Path
 	modObj: ModuleType
 	# Loading pages & wizards -----------------------------
+	# Initializing root module of commands package...
+	botVars = {
+		'ADMIN_IDS_': ADMIN_IDS,
+		'db_': db,
+		'pUsers_': pUsers,
+		'pages_': pages,
+		'wizards_': wizards,}
+	cmds.InitModule(**botVars)
+	pages = {pg.cmd:pg.callback for pg in cmds.GetPages()}
+	wizards = {wiz.CMD:wiz for wiz in cmds.GetWizards()}
+	# Initializing & loading the other module of commands package...
 	modsDir = _APP_DIR / 'cmds'
 	modNames = list(modsDir.glob('*.py'))
+	modNames = [modName.relative_to(modsDir) for modName in modNames]
 	try:
 		modNames.remove(Path('__init__.py'))
 	except ValueError:
 		pass
-	botVars = {
-		'admin_ids': ADMIN_IDS,
-		'db': db,
-		'user_pool': pUsers,
-		'pages': pages,
-		'wizards': wizards}
 	for modName in modNames:
 		try:
 			modObj = import_module(f'cmds.{modName.stem}')
-			modObj.InitializeModule(**botVars)
+			modObj.InitModule(**botVars)
 			modPages: tuple[Page, ...] = modObj.GetPages()
 			modWizards: tuple[AbsWizard, ...] = modObj.GetWizards()
 			dPages = {page.cmd:page.callback for page in modPages}
@@ -148,6 +146,24 @@ def _LoadPagesWizards() -> None:
 				wizards[cmd] = wiz
 		pages.update(dPages)
 		wizards.update(dWizards)
+
+
+def _InitOtherModules() -> None:
+	# Declaring variables ---------------------------------
+	import utils.types
+	global ADMIN_IDS
+	global db
+	global pUsers
+	global pages
+	global wizards
+	# Functioning -----------------------------------------
+	botVars = {
+		'ADMIN_IDS_': ADMIN_IDS,
+		'db_': db,
+		'pUsers_': pUsers,
+		'pages_':pages,
+		'wizards_': wizards,}
+	utils.types.InitModule(**botVars)
 
 
 def _CreateBot() -> None:
@@ -241,6 +257,16 @@ async def _StartBot() -> None:
 		await _happyEngBot.connect()
 
 
+def _CloseBot() -> None:
+	# Declaring variables ---------------------------------
+	import asyncio
+	global _happyEngBot
+	global pUsers
+	# Functioning -----------------------------------------
+	pUsers.Close()
+	asyncio.create_task(_happyEngBot.close())
+
+
 def BotMain() -> None:
 	"""The entry point of the Bot."""
 	# Declaring variables ---------------------------------
@@ -252,16 +278,16 @@ def BotMain() -> None:
 	_LoadConfig()
 	_LoadDatabase()
 	_LoadPagesWizards()
+	_InitOtherModules()
 	_CreateBot()
 	# Running the bot...
 	try:
 		asyncio.run(_StartBot())
 	except KeyboardInterrupt:
-		asyncio.create_task(_happyEngBot.close())
+		_CloseBot()
 	except SystemExit:
-		asyncio.create_task(_happyEngBot.close())
+		_CloseBot()
 	finally:
-		pUsers.close()
 		db.Close()
 
 

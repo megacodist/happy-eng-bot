@@ -15,11 +15,10 @@ def Baz() -> None:
 
 
 def main() -> None:
-    for obj in (Foo, Baz,):
-        print(obj.__name__.ljust(70, '='))
-        maxLen = max(len(attr) for attr in dir(obj))
-        for attr in dir(obj):
-            print(f'{attr:>{maxLen}}: {getattr(obj, attr)}')
+    from importlib import import_module
+    mods = ['basic',]
+    for name in mods:
+        module = import_module(f'cmds.{name}')
 
 
 if __name__ == '__main__':

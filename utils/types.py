@@ -4,7 +4,6 @@
 """This module exposes the follwoings for this Bot:
 
 #### Types
-1. `Commands`
 
 #### Dependencies
 1. Python 3.12
@@ -19,65 +18,65 @@ from typing import Any, Callable, TypeVar
 import logging
 from typing import Any, Coroutine, TypeVar
 
-from bale import (
-    Bot, Message, User, InlineKeyboardButton, InlineKeyboardMarkup)
+from bale import Message, User
 
-from cmds import AbsWizard
 from db import ID, IDatabase, UserData
 import lang
 
 
-class Commands(enum.Enum):
-    """This enumeration contains all the supported commands of this Bot.
-    The value of each enumerator is its shell command.
-    """
-    ADMIN = '/admin'
-    HELP = '/help'
-    MY_COURSES = '/mycourses'
-    SIGN_IN = '/signin'
-    SHOWCASE = '/showcase'
-    START = '/start'
+# Bot-wide variables ================================================
+pages: dict[str, PgCallback]
+
+wizards: dict[str, AbsWizard]
 
 
-class InputType(enum.IntEnum):
-    """Specifies the types of input the end user can enter the Bot."""
-    TEXT = 0
-    CALLBACK = 1
-    COMMAND = 2
+def InitModule(
+        *,
+        pages_: dict[str, PgCallback],
+        wizards_: dict[str, AbsWizard],
+        **kwargs,
+        ) -> None:
+    # Declaring variables ---------------------------------
+    global pages
+    global wizards
+    # Functoning ------------------------------------------
+    pages = pages_
+    wizards = wizards_
 
 
 class SDelHooks(enum.IntEnum):
     BEFORE_ACCESS = enum.auto()
-    """These callables are invoked before member access. They accept
-    the hashable arguments of `SDelPool` API and return `None`.
+    """This callback is invoked before member access. It accepts
+    the hashable arguments of `SDelPool` API and returns `None`.
     """
     AFTER_ACCESS = enum.auto()
-    """These callables are invoked after member access. The `KeyError`
-    cancels these callables. They accept the hashable arguments of
-    `SDelPool` API and return `None`.
+    """This callback is invoked after member access. The `KeyError`
+    cancels this callback. It accepts the hashable arguments of
+    `SDelPool` API and returns `None`.
     """
     ACCESS_KEY_ERROR = enum.auto()
-    """These callables are invoked when `KeyError` occurred during memeber
-    access. They must accept the hashable arguments of `SDelPool` API and
-    return a boolean value. `True` to suppress `KeyError` or `False` to
-    re-raise it. If there is at least one `True`, the error will be
-    canceled.
+    """This callback is invoked when `KeyError` occurred during memeber
+    access. It accepts the hashable arguments of `SDelPool` API and the
+    `KeyError` object and returns `None`. If callback can not resolve
+    the problem, it must re-raise the exception.
     """
     BEFORE_ASSIGNMENT = enum.auto()
-    """These callables are invoked before member assignment. They accept
-    the hashable arguments of `SDelPool` API and return `None`.
+    """This callback is invoked before member assignment. It accepts
+    the hashable arguments of `SDelPool` API and returns `None`.
     """
     AFTER_ASSIGNMENT = enum.auto()
-    """These callables are invoked after member assignment. They accept
-    the hashable arguments of `SDelPool` API and return `None`.
+    """This callback is invoked after member assignment. The `KeyError`
+    cancels this callback. It accepts the hashable arguments of
+    `SDelPool` API and returns `None`.
     """
     BEFORE_DELETION = enum.auto()
-    """These callables are invoked before member deletion. They accept
-    the hashable arguments of `SDelPool` API and return `None`.
+    """This callback is invoked before member deletion. It accepts
+    the hashable arguments of `SDelPool` API and returns `None`.
     """
     AFTER_DELETION = enum.auto()
-    """These callables are invoked after member deletion. They accept
-    the hashable arguments of `SDelPool` API and return `None`.
+    """This callback is invoked after member deletion. The `KeyError`
+    cancels this callback. It accepts the hashable arguments of
+    `SDelPool` API and returns `None`.
     """
 
 
@@ -120,11 +119,12 @@ class SDelPool[_Hashable, _SDelType]:
         will be deleted if it has not accessed.
         """
         from asyncio import TimerHandle
+        from collections import defaultdict
         self._DEL_TIMINT = del_timint
         """The time interval for deletion in seconds."""
         self._items: dict[_Hashable, _SDelType] = {}
         self._timers: dict[_Hashable, TimerHandle] = {}
-        self._hooks: dict[SDelHooks, list[Callable[[_Hashable], None]]] = {}
+        self._hooks: dict[SDelHooks, Callable[[_Hashable], None]] = {}
     
     def __getitem__(self, __key: _Hashable, /) -> _SDelType:
         return self.GetItem(__key)
@@ -146,32 +146,30 @@ class SDelPool[_Hashable, _SDelType]:
         deletion scheduling operations (scheduling, re-scheduling, or
         unscheduling). It raises `KeyError` if the key does not exist.
         """
-        #return self._items[__key]
-        for cb in self._hooks[SDelHooks.BEFORE_ACCESS]:
-            cb(__key)
+        if SDelHooks.BEFORE_ACCESS in self._hooks:
+            self._hooks[SDelHooks.BEFORE_ACCESS](__key)
         try:
             mem = self._items[__key]
-            for cb in self._hooks[SDelHooks.AFTER_ACCESS]:
-                cb(__key)
         except KeyError as err:
-            suppression = False
-            for cb in self._hooks[SDelHooks.ACCESS_KEY_ERROR]:
-                suppression |= cb(__key)
-            if not suppression:
-                raise err
+            if SDelHooks.ACCESS_KEY_ERROR in self._hooks:
+                mem = self._hooks[SDelHooks.ACCESS_KEY_ERROR](__key, err)
+        else:
+            if SDelHooks.AFTER_ACCESS in self._hooks:
+                self._hooks[SDelHooks.AFTER_ACCESS](__key)
+            return mem
     
     def SetItemBypass(self, __key: _Hashable, __value: _SDelType, /) -> None:
         """Sets the member object associated with the key bypassing
         deletion scheduling operations (scheduling, re-scheduling, or
         unscheduling). It raises `KeyError` if the key does not exist.
         """
-        for cb in self._hooks[SDelHooks.BEFORE_ASSIGNMENT]:
-            cb(__key)
+        if SDelHooks.BEFORE_ASSIGNMENT in self._hooks:
+            self._hooks[SDelHooks.BEFORE_ASSIGNMENT](__key)
         self._items[__key] = __value
-        for cb in self._hooks[SDelHooks.AFTER_ASSIGNMENT]:
-            cb(__key)
+        if SDelHooks.AFTER_ASSIGNMENT in self._hooks:
+            self._hooks[SDelHooks.AFTER_ASSIGNMENT](__key)
 
-    def DeleteItemBypass(self, __key: _Hashable, /) -> None:
+    def DelItemBypass(self, __key: _Hashable, /) -> None:
         """Deletes the specified key from internal data structures. It
         raises `KeyError` if the key does not exist. This API does not
         affect deletion scheduling in any way (scheduling, re-scheduling, or
@@ -180,12 +178,12 @@ class SDelPool[_Hashable, _SDelType]:
         import logging
         logging.debug(f'Deletion of {__key} key occurred in '
             f'{self.__class__.__qualname__}')
-        for cb in self._hooks[SDelHooks.BEFORE_DELETION]:
-            cb(__key)
+        if SDelHooks.BEFORE_DELETION in self._hooks:
+            self._hooks[SDelHooks.BEFORE_ASSIGNMENT](__key)
         del self._items[__key]
         del self._timers[__key]
-        for cb in self._hooks[SDelHooks.AFTER_DELETION]:
-            cb(__key)
+        if SDelHooks.AFTER_DELETION in self._hooks:
+            self._hooks[SDelHooks.AFTER_DELETION](__key)
     
     def GetItem(self, __key: _Hashable, /) -> _SDelType:
         """Gets the member object at the specified key and reset deletion
@@ -223,7 +221,7 @@ class SDelPool[_Hashable, _SDelType]:
         loop = asyncio.get_running_loop()
         self._timers[key] = loop.call_at(
             loop.time() + self._DEL_TIMINT,
-            self.DeleteItemBypass,
+            self.DelItemBypass,
             key)
 
     def UnscheduleDel(self, key: _Hashable) -> None:
@@ -235,66 +233,137 @@ class SDelPool[_Hashable, _SDelType]:
             if not self._timers[key].cancelled():
                 logging.fatal('E1-1', exc_info=True)
             self._timers[key] = None
+    
+    def Clear(self) -> None:
+        for key in self._items:
+            self.UnscheduleDel(key)
+            self.DelItemBypass(key)
 
 
-class LSDelPool(ABC, SDelPool[_Hashable, _SDelType]):
-    """
-    #### Load-save SDelPool
-    Objects of this type act like `SDelPool` but upon failure in
-    access, it tries to load the object via `Load` method; and before
-    deletion it saves the member object via `Save` method.
-    """
+type PgCallback = Callable[[ID], Coroutine[Any, Any, Message]]
+"""The signature for any callable object to be qualified as a `Page`."""
+
+
+class Page:
     def __init__(
             self,
-            db: IDatabase,
-            *,
-            del_timint=3_600,
+            cmd: str,
+            callback: PgCallback,
             ) -> None:
-        super().__init__(del_timint=del_timint)
-        self._db = db
-        """The database object"""
+        self.cmd = cmd
+        self.callback = callback
+
+
+class WizardRes:
+    def __init__(
+            self,
+            reply: Coroutine[Any, Any, Message] | None,
+            finished: bool,
+            ) -> None:
+        self.reply = reply
+        self.finished = finished
+
+
+class AbsWizard(ABC):
+    """Abstract base class for operations in the Bot. Implementations
+    must avoid returning replies directly but rather use `Reply` method.
+    Objects of this type supports the followings:
+
+    1. hash protocol
+    2. equality comparison
+    """
+    _nId = 1
+    """This attribute is used to produce unique id in `GenerateUid` class
+    method.
+    """
+
+    CMD: str
+    """The literal of this command."""
+
+    @classmethod
+    def GenerateUid(cls) -> int:
+        """Generates a unique id. This uniqueness is guaranteed among
+        all instances of this class even deleted ones.
+        """
+        uid = cls._nId
+        cls._nId += 1
+        if cls._nId > 0xff_ff_ff_ff:
+            cls._nId = 1
+        return uid
+    
+    def __init__(self, bale_id: ID) -> None:
+        self._UID = self.GenerateUid()
+        """The unique ID of this operation."""
+        self._baleId = bale_id
+        """The ID of the user in the Bale."""
+        self._lastReply: Coroutine[Any, Any, Message] | None = None
+        """The last reply of the operation."""
+    
+    def __hash__(self) -> int:
+        return self._UID
+
+    def __eq__(self, __obj, /) -> bool:
+        if isinstance(__obj, self.__class__):
+            return self._UID == __obj._UID
+        return NotImplemented
+    
+    @property
+    def Uid(self) -> int:
+        """Returns the unique ID of this operation."""
+        return self._UID
+    
+    @property
+    def LastReply(self) -> Coroutine[Any, Any, Message] | None:
+        """Gets the last reply of the operation."""
+        return self._lastReply
+    
+    def Reply(
+            self,
+            __coro: Coroutine[Any, Any, Message] | None,
+            /,
+            *args,
+            **kwargs,
+            ) -> Coroutine[Any, Any, Message] | None:
+        """Saves the last reply and returns it."""
+        from functools import partial
+        if __coro is None:
+            self._lastReply = None
+        else:
+            self._lastReply = partial(__coro, *args, **kwargs)
+        return self.GetLastReply()
+    
+    def GetLastReply(self) -> Coroutine[Any, Any, Message] | None:
+        if self._lastReply is None:
+            return None
+        else:
+            return self._lastReply()
     
     @abstractmethod
-    def Load(self, key: _Hashable) -> _SDelType:
-        """Loads member object when the key is not available. If it cannot
-        load the member object, it must raise `KeyError` exception.
-        """
+    def Start(self)  -> WizardRes:
+        """Starts this operation."""
         pass
 
     @abstractmethod
-    def Save(self, key: _Hashable) -> None:
-        """Saves the member object just before deletion. If it cannot
-        load the member object, it must throws `KeyError` exception.
+    def ReplyText(self) -> WizardRes:
+        """Optionally replies the provided text. It must return `True` if
+        the operation finished otherwise `False`.
         """
         pass
 
-    def __contains__(self, __key: _Hashable) -> None:
-        existed = super().__contains__(__key)
-        if existed:
-            return True
-        try:
-            item = self.Load(__key)
-            self.SetItem(__key, item)
-            return True
-        except KeyError:
-            return False
+    def ReplyCallback(self) -> WizardRes:
+        """Optionally replies the provided callback. It must return `True`
+        if the operation finished otherwise `False`. Callback data are in the
+        format of `<uid>-<cbnum>-<optional>`. The `Uid` must be eliminated
+        by operation manager and the rest must be fed into this method.
+        """
+        pass
 
-    def GetItemBypass(self, __key: _Hashable, /) -> _SDelType:
-        try:
-            item = super().GetItemBypass(__key)
-        except KeyError:
-            item = self.Load(__key)
-            self.SetItem(__key, item)
-        return item
 
-    def DeleteItemBypass(self, __key: _Hashable, /) -> None:
-        self.Save(__key)
-        super().DeleteItemBypass(__key)
-    
-    def close(self) -> None:
-        for key in self._items:
-            self.Save(key)
-        self._items.clear()
+class InputType(enum.IntEnum):
+    """Specifies the types of input the end user can enter the Bot."""
+    TEXT = 0
+    CALLBACK = 1
+    COMMAND = 2
 
 
 class UserInput:
@@ -312,7 +381,7 @@ class UserInput:
 class UserSpace:
     def __init__(self) -> None:
         self._inputs: deque[UserInput] = deque()
-        self._baleUser = None
+        self._baleUser: User | None = None
         self._dbUser: UserData
         self._wizard: AbsWizard | None = None
     
@@ -322,6 +391,9 @@ class UserSpace:
     def CountInputs(self) -> int:
         """Returns number of inputs."""
         return len(self._inputs)
+    
+    def GetId(self) -> ID:
+        return self._baleUser.id
     
     def GetFirstInput(self) -> UserInput:
         """Gets first input from the queue without poping it. It raises
@@ -372,7 +444,17 @@ class UserSpace:
             return self.GetFirstInput().bale_msg.reply(lang.EXPIRED_CB)
     
     def _GetCmdReply(self) -> Coroutine[Any, Any, Message] | None:
-        pass
+        # DEclaring variables -----------------------------
+        global pages
+        global wizards
+        # Dispatching command -----------------------------
+        try:
+            return pages[self.GetFirstInput().data](self.GetId())
+        except KeyError:
+            try:
+                wiz = wizards[self.GetFirstInput().data](self.GetId())
+            except KeyError:
+                return pages['/help'](self._baleUser.id)
 
 
 class UserPool(SDelPool[ID, UserSpace]):
@@ -382,15 +464,17 @@ class UserPool(SDelPool[ID, UserSpace]):
             *,
             del_timint=20,
             ) -> None:
-        super().__init__(db, del_timint=del_timint)
+        super().__init__(del_timint=del_timint)
         self._db = db
-        self._hooks[SDelHooks.BEFORE_DELETION].append(self._Save)
-        self._hooks[SDelHooks.ACCESS_KEY_ERROR].append(self._Load)
+        self._hooks[SDelHooks.BEFORE_DELETION] = self._Save
+        self._hooks[SDelHooks.ACCESS_KEY_ERROR] = self._Load
     
-    def _Load(self, key: int) -> UserData:
+    def _Load(self, key: int, err: KeyError) -> UserData:
         userData = self._db.GetUser(key)
         if userData is None:
-            raise KeyError()
+            raise err
+        else:
+            self._items[key] = userData
         logging.debug(f'The user with {key} has been loaded into '
             f'{self.__class__.__qualname__}')
         return userData
@@ -398,127 +482,6 @@ class UserPool(SDelPool[ID, UserSpace]):
     def _Save(self, key: ID) -> None:
         self._db.UpsertUser(self._items[key])
         logging.debug(f'{self._items[key]} saved to the database.')
-
-
-
-
-
-class OperationPool(SDelPool[ID, AbsOperation]):
-
-    CANCELED_BY_CMD_CBD = '1'
-    """The infix of the callback data denotes cancelation of this
-    operation by a command. The callback data must have this format:
-    `<uid>-1-/<cmd>`
-    """
-
-    CONTINUE_CBD = '2'
-    """The suffix of the callback data which denotes that this operation
-    to be continued. The callback data must have this format:
-    `<uid>-2`
-    """
-
-    def __init__(
-            self,
-            user_pool: UserPool,
-            cmd_dispatcher: Callable[[Message, User, str],
-                Coroutine[Any, Any, Message]],
-            ) -> None:
-        super().__init__()
-        self._ops: dict[UserData, AbsOperation] = {}
-        """The mapping of all the ongoing operations."""
-        self._cmdDispatcher = cmd_dispatcher
-        self._userPool = user_pool
-        """The user pool of the Bot."""
-        self._UID = 0
-        """The unique ID of the operation pool. All operations' UID are
-        positive (as a result larger than 0).
-        """
-
-    def GetTextReply(
-            self,
-            bale_msg: Message,
-            bale_user: User,
-            text: str,
-            ) -> Coroutine[Any, Any, Message] | None:
-        """Gets the optional reply of the user provided text. It raises
-        `KeyError` if the user does not have an ongoing operation.
-        """
-        # Re-scheduling the user...
-        try:
-            self._userPool[bale_user.id]
-        except KeyError:
-            pass
-        # Getting the reply...
-        reply, finished = self[bale_user.id].ReplyText(bale_msg, text)
-        if finished:
-            self.DelItem(bale_user.id)
-        return reply
-
-    def GetCallbackReply(
-            self,
-            bale_msg: Message,
-            bale_user: User,
-            cb_data: str,
-            ) -> Coroutine[Any, Any, Message] | None:
-        """Gets the optional reply of the callback. It raises
-        `KeyError` if the user does not have an ongoing operation.
-        """
-        # Re-scheduling the user...
-        try:
-            self._userPool[bale_user.id]
-        except KeyError:
-            pass
-        self.GetItem(bale_user.id)
-        # Getting the reply...
-        from .funcs import SplitOnDash
-        cmd = None
-        parts = SplitOnDash(cb_data)
-        if parts[0] != str(self._UID):
-            reply, finished = self._items[bale_user.id].ReplyCallback(
-                bale_msg,
-                cb_data)
-        else:
-            match parts[1].split('-'):
-                case [self.CANCELED_BY_CMD_CBD, cmd,]:
-                    finished = True
-                case [self.CONTINUE_CBD,]:
-                    reply = self[bale_user.id].GetLastReply()
-                    finished = False
-                case _:
-                    logging.error(f'{cb_data}: unknown callback in '
-                        f'{self.__class__.__qualname__}')
-                    reply = None
-                    finished = False
-        if finished:
-            self.DelItem(bale_user.id)
-        if cmd is None:
-            return reply
-        else:
-            return self._cmdDispatcher(bale_msg, bale_user, cmd)
-
-    def CancelByCmdReply(
-            self,
-            bale_msg: Message,
-            bale_user: User,
-            cmd: str,
-            ) -> Coroutine[Any, Any, Message]:
-        """Gets a reply informing user of canceling the ongoing operation
-        to pursue the passed-in command. It raises `KeyError` if the user
-        does not have an ongoing operation.
-        """
-        # Re-scheduling the user...
-        try:
-            self._userPool[bale_user.id]
-        except KeyError:
-            pass
-        # Checking if the user has an ongoing operation...
-        self.GetItem(bale_user.id)
-        # Asking for cancelation...
-        buttons = InlineKeyboardMarkup()
-        buttons.add(InlineKeyboardButton(
-            lang.CONTINUE_OP,
-            callback_data=f'{self._UID}-{self.CONTINUE_CBD}'))
-        buttons.add(InlineKeyboardButton(
-            lang.CANCEL_OP,
-            callback_data=f'{self._UID}-{self.CANCELED_BY_CMD_CBD}-{cmd}'))
-        return bale_msg.reply(lang.DISRUPTIVE_CMD, components=buttons)
+    
+    def Close(self) -> None:
+        super().Clear()

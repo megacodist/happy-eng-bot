@@ -7,48 +7,44 @@ from typing import Any, Callable, Coroutine
 
 from bale import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from . import AbsWizard, Page, WizardRes
 from db import UserData
 import lang as strs
 import lang.cmds.basic as basic_strs
-from utils.types import ID, UserPool
+from utils.types import AbsWizard, ID, Page, PgCallback, UserPool, WizardRes
 
 
-# Module variables ==================================================
+# Bot-wide variables ================================================
 pUsers: UserPool
 
 pages: dict[str, Callable[[ID], Coroutine[Any, Any, Message]]]
 
+wizards: dict[str, AbsWizard]
 
-def InitializeModule(
+
+def InitModule(
         *,
-        user_pool: UserPool,
-        pages: dict[str, Callable[[ID], Coroutine[Any, Any, Message]]],
+        pUsers_: UserPool,
+        pages_: dict[str, PgCallback],
+        wizards_: dict[str, AbsWizard],
         **kwargs
         ) -> None:
-    """Initializes the module."""
+    """Initializes Bot-wide variables of this module."""
     global pUsers
     global pages
-    pUsers = user_pool
-    pages = 
+    global wizards
+    pUsers = pUsers_
+    pages = pages_
+    wizards = wizards_
 
 
 def GetPages() -> tuple[Page, ...]:
     """Gets a tuple of all implemented `Page`s in this module."""
-    return tuple([Page('/help', GetHelpReply)])
+    return tuple()
 
 
 def GetWizards() -> tuple[AbsWizard, ...]:
     """Gets a tuple of all implemented `Wizard`s in this module."""
     return tuple([SigninWiz,])
-
-
-def GetHelpReply(bale_id: ID) -> Coroutine[Any, Any, Message]:
-    """Gets a list of all available commands."""
-    global pUsers
-    global pa
-    text = strs.HELP_ALL_CMDS + '\n' + '\n'.join()
-    return pUsers[bale_id].GetFirstInput().bale_msg.reply()
 
 
 class SigninWiz(AbsWizard):
@@ -132,6 +128,7 @@ class SigninWiz(AbsWizard):
             return WizardRes(None, False,)
 
     def ReplyCallback(self) -> WizardRes:
+        global pUsers
         match pUsers[self._baleId].GetFirstInput().data:
             case self._CONFIRM_CBD:
                 pUsers[self._baleId]._dbUser = UserData(
@@ -146,8 +143,8 @@ class SigninWiz(AbsWizard):
                 self._phone = None
                 return WizardRes(self.Reply(self.Start), False,)
             case _:
-                logging.error(f'{cb_data}: unknown callback in '
-                    f'{self.__class__.__qualname__}')
+                logging.error(f'{pUsers[self._baleId].GetFirstInput().data}:'
+                    f' unknown callback in {self.__class__.__qualname__}')
                 return WizardRes(None, False,)
     
     def _AppendRestartBtn(self, buttons: InlineKeyboardMarkup) -> None:
