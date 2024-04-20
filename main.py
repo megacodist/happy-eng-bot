@@ -15,7 +15,7 @@ from db import IDatabase
 from utils.types import InputType, UserInput, UserPool
 
 
-# Module-wide variables & contants ==================================
+# Bot-wide variables ================================================
 _APP_DIR = Path(__file__).resolve().parent
 """The directory of the Bot."""
 
@@ -31,7 +31,7 @@ _happyEngBot: Bot
 db: IDatabase
 """The database of the Bot."""
 
-pUsers: UserPool
+pUsers = UserPool()
 """A mapping of `ID -> UserData` contains all information of recent users
 of the Bot.
 """
@@ -54,30 +54,12 @@ def _LoadConfig() -> None:
 
 
 def _LoadDatabase() -> None:
-	"""Loads database and initializes objects which require database."""
+	"""Loads database."""
 	# Declaring variables ---------------------------------
 	from db.sqlite3 import SqliteDb
 	global db
-	global pUsers
 	# Loading database ------------------------------------
 	db = SqliteDb(_APP_DIR / 'db.db3')
-	pUsers = UserPool(db)
-
-
-async def _DispatchInput(
-		bale_msg: Message,
-		bale_user: User,
-		type_: InputType,
-		input_: str | None,
-		) -> Coroutine[Any, Any, None]:
-	"""Disptaches the user input."""
-	inputExists = pUsers[bale_user.id].CountInputs() > 0
-	pUsers[bale_user.id].ApendInput(UserInput(bale_msg, type_, input_))
-	pUsers[bale_user.id]._baleUser = bale_user
-	if inputExists:
-		return
-	while pUsers[bale_user.id].CountInputs() > 0:
-		await pUsers[bale_user.id].ReplyNextInput()
 
 
 def _LoadPagesWizards() -> None:
@@ -103,8 +85,8 @@ def _LoadPagesWizards() -> None:
 		'pages_': pages,
 		'wizards_': wizards,}
 	cmds.InitModule(**botVars)
-	pages = {pg.cmd:pg.callback for pg in cmds.GetPages()}
-	wizards = {wiz.CMD:wiz for wiz in cmds.GetWizards()}
+	pages.update({pg.cmd:pg.callback for pg in cmds.GetPages()})
+	wizards.update({wiz.CMD:wiz for wiz in cmds.GetWizards()})
 	# Initializing & loading the other module of commands package...
 	modsDir = _APP_DIR / 'cmds'
 	modNames = list(modsDir.glob('*.py'))
@@ -166,6 +148,23 @@ def _InitOtherModules() -> None:
 	utils.types.InitModule(**botVars)
 
 
+async def _DispatchInput(
+		bale_msg: Message,
+		bale_user: User,
+		type_: InputType,
+		input_: str | None,
+		) -> Coroutine[Any, Any, None]:
+	"""Disptaches the user input."""
+	inputExists = pUsers[bale_user.id].CountInputs() > 0
+	pUsers[bale_user.id].ApendInput(UserInput(bale_msg, type_, input_))
+	pUsers[bale_user.id]._baleUser = bale_user
+	pUsers[bale_user.id]._dbUser.Frequencies.Increment(bale_msg.date.hour)
+	if inputExists:
+		return
+	while pUsers[bale_user.id].CountInputs() > 0:
+		pUsers[bale_user.id].ReplyNextInput()
+
+
 def _CreateBot() -> None:
 	# Declaring of variables ------------------------------
 	global _happyEngBot
@@ -210,17 +209,25 @@ def _CreateBot() -> None:
 		logging.debug(update)
 
 	@_happyEngBot.event
-	async def on_callback(callback: CallbackQuery) -> None:
+	async def on_callback(bale_cb: CallbackQuery) -> None:
 		logging.debug('A callback query is created '.ljust(70, '='))
-		logging.debug(callback)
-		if not callback.data:
+		logging.debug(bale_cb)
+		# Looking for empty or None messages...
+		if not bale_cb.data:
 			logging.info('A callback with no data.')
 			return
-		await _DispatchInput(
-			callback.message,
-			callback.from_user,
-			callback.data,
-			InputType.CALLBACK)
+		if bale_cb.data.startswith('/'):
+			await _DispatchInput(
+				bale_cb.message,
+				bale_cb.from_user,
+				InputType.COMMAND,
+				bale_cb.data,)
+		else:
+			await _DispatchInput(
+				bale_cb.message,
+				bale_cb.from_user,
+				InputType.CALLBACK,
+				bale_cb.data,)
 
 	@_happyEngBot.event
 	async def on_member_chat_join(
@@ -257,22 +264,14 @@ async def _StartBot() -> None:
 		await _happyEngBot.connect()
 
 
-def _CloseBot() -> None:
-	# Declaring variables ---------------------------------
-	import asyncio
-	global _happyEngBot
-	global pUsers
-	# Functioning -----------------------------------------
-	pUsers.Close()
-	asyncio.create_task(_happyEngBot.close())
-
-
 def BotMain() -> None:
 	"""The entry point of the Bot."""
 	# Declaring variables ---------------------------------
 	import asyncio
 	from logger import ConfigureLogging
-	task: asyncio.Task | None
+	global _happyEngBot
+	global pUsers
+	global db
 	# Starting point --------------------------------------
 	ConfigureLogging(_APP_DIR / 'log.log')
 	_LoadConfig()
@@ -284,10 +283,11 @@ def BotMain() -> None:
 	try:
 		asyncio.run(_StartBot())
 	except KeyboardInterrupt:
-		_CloseBot()
+		asyncio.create_task(_happyEngBot.close())
 	except SystemExit:
-		_CloseBot()
+		asyncio.create_task(_happyEngBot.close())
 	finally:
+		pUsers.Clear()
 		db.Close()
 
 

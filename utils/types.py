@@ -18,10 +18,10 @@ from typing import Any, Callable, TypeVar
 import logging
 from typing import Any, Coroutine, TypeVar
 
-from bale import Message, User
+from bale import Message, User, InlineKeyboardButton, InlineKeyboardMarkup
 
 from db import ID, IDatabase, UserData
-import lang
+import lang as strs
 
 
 # Bot-wide variables ================================================
@@ -29,19 +29,24 @@ pages: dict[str, PgCallback]
 
 wizards: dict[str, AbsWizard]
 
+db: IDatabase
+
 
 def InitModule(
         *,
         pages_: dict[str, PgCallback],
         wizards_: dict[str, AbsWizard],
+        db_: IDatabase,
         **kwargs,
         ) -> None:
     # Declaring variables ---------------------------------
     global pages
     global wizards
+    global db
     # Functoning ------------------------------------------
     pages = pages_
     wizards = wizards_
+    db = db_
 
 
 class SDelHooks(enum.IntEnum):
@@ -153,10 +158,13 @@ class SDelPool[_Hashable, _SDelType]:
         except KeyError as err:
             if SDelHooks.ACCESS_KEY_ERROR in self._hooks:
                 mem = self._hooks[SDelHooks.ACCESS_KEY_ERROR](__key, err)
+                self._items[__key] = mem
+            else:
+                raise err
         else:
             if SDelHooks.AFTER_ACCESS in self._hooks:
                 self._hooks[SDelHooks.AFTER_ACCESS](__key)
-            return mem
+        return mem
     
     def SetItemBypass(self, __key: _Hashable, __value: _SDelType, /) -> None:
         """Sets the member object associated with the key bypassing
@@ -179,7 +187,7 @@ class SDelPool[_Hashable, _SDelType]:
         logging.debug(f'Deletion of {__key} key occurred in '
             f'{self.__class__.__qualname__}')
         if SDelHooks.BEFORE_DELETION in self._hooks:
-            self._hooks[SDelHooks.BEFORE_ASSIGNMENT](__key)
+            self._hooks[SDelHooks.BEFORE_DELETION](__key)
         del self._items[__key]
         del self._timers[__key]
         if SDelHooks.AFTER_DELETION in self._hooks:
@@ -235,7 +243,8 @@ class SDelPool[_Hashable, _SDelType]:
             self._timers[key] = None
     
     def Clear(self) -> None:
-        for key in self._items:
+        keys = list(self._items.keys())
+        for key in keys:
             self.UnscheduleDel(key)
             self.DelItemBypass(key)
 
@@ -272,45 +281,30 @@ class AbsWizard(ABC):
     1. hash protocol
     2. equality comparison
     """
-    _nId = 1
-    """This attribute is used to produce unique id in `GenerateUid` class
-    method.
-    """
 
     CMD: str
     """The literal of this command."""
-
-    @classmethod
-    def GenerateUid(cls) -> int:
-        """Generates a unique id. This uniqueness is guaranteed among
-        all instances of this class even deleted ones.
-        """
-        uid = cls._nId
-        cls._nId += 1
-        if cls._nId > 0xff_ff_ff_ff:
-            cls._nId = 1
-        return uid
     
-    def __init__(self, bale_id: ID) -> None:
-        self._UID = self.GenerateUid()
-        """The unique ID of this operation."""
+    def __init__(self, bale_id: ID, uw_id: int) -> None:
         self._baleId = bale_id
         """The ID of the user in the Bale."""
+        self._UWID = uw_id
+        """The unique ID of this wizard."""
         self._lastReply: Coroutine[Any, Any, Message] | None = None
         """The last reply of the operation."""
     
     def __hash__(self) -> int:
-        return self._UID
+        return self._UWID
 
     def __eq__(self, __obj, /) -> bool:
         if isinstance(__obj, self.__class__):
-            return self._UID == __obj._UID
+            return self._UWID == __obj._UWID
         return NotImplemented
     
     @property
-    def Uid(self) -> int:
+    def Uwid(self) -> int:
         """Returns the unique ID of this operation."""
-        return self._UID
+        return self._UWID
     
     @property
     def LastReply(self) -> Coroutine[Any, Any, Message] | None:
@@ -353,7 +347,7 @@ class AbsWizard(ABC):
     def ReplyCallback(self) -> WizardRes:
         """Optionally replies the provided callback. It must return `True`
         if the operation finished otherwise `False`. Callback data are in the
-        format of `<uid>-<cbnum>-<optional>`. The `Uid` must be eliminated
+        format of `<uwid>-<cbnum>-<optional>`. The `Uwid` must be eliminated
         by operation manager and the rest must be fed into this method.
         """
         pass
@@ -378,15 +372,34 @@ class UserInput:
         self.data = data
 
 
+class _ReplyState(enum.IntEnum):
+    NONE = enum.auto()
+    """No reply is available."""
+    PENDING = enum.auto()
+    """Relying is scheduled for later."""
+    RUNNING = enum.auto()
+    """Replying is in progress."""
+
+
 class UserSpace:
     def __init__(self) -> None:
         self._inputs: deque[UserInput] = deque()
+        self._outputs: deque[Coroutine[Any, Any, Message]] = deque()
+        self._repState = _ReplyState.NONE
         self._baleUser: User | None = None
         self._dbUser: UserData
         self._wizard: AbsWizard | None = None
     
     def ApendInput(self, ui: UserInput) -> None:
         self._inputs.append(ui)
+    
+    def AppendOutput(self, reply: Coroutine[Any, Any, Message]) -> None:
+        import asyncio
+        self._outputs.append(reply)
+        if self._repState == _ReplyState.NONE:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._Reply())
+            self._repState = _ReplyState.PENDING
     
     def CountInputs(self) -> int:
         """Returns number of inputs."""
@@ -408,8 +421,8 @@ class UserSpace:
         return self._inputs.popleft()
     
     def ReplyNextInput(self) -> Coroutine[Any, Any, Message] | None:
-        """Gets the reply for the next input. It does nothing if there is
-        no input.
+        """Gets the reply for the next input and removes it from this
+        user sapce object. It does nothing if there is no input.
         """
         try:
             input_ = self.GetFirstInput()
@@ -417,31 +430,32 @@ class UserSpace:
             return
         match input_.type_:
             case InputType.TEXT:
-                return self._GetTextReply()
+                reply = self._GetTextReply()
             case InputType.CALLBACK:
-                return self._GetCbReply()
+                reply = self._GetCbReply()
             case InputType.COMMAND:
-                return self._GetCmdReply()
+                reply = self._GetCmdReply()
+        self.PopFirstInput()
+        if reply:
+            self.AppendOutput(reply)
     
     def _GetTextReply(self) -> Coroutine[Any, Any, Message] | None:
         if self._wizard:
             res = self._wizard.ReplyText()
-            self.PopFirstInput()
             if res.finished:
                 self._wizard = None
             return res.reply
         else:
-            return  self.GetFirstInput().bale_msg.reply(lang.UNEX_DATA)
+            return self.GetFirstInput().bale_msg.reply(strs.UNEX_DATA)
     
     def _GetCbReply(self) -> Coroutine[Any, Any, Message] | None:
         if self._wizard:
             res = self._wizard.ReplyCallback()
-            self.PopFirstInput()
             if res.finished:
                 self._wizard = None
             return res.reply
         else:
-            return self.GetFirstInput().bale_msg.reply(lang.EXPIRED_CB)
+            return self.GetFirstInput().bale_msg.reply(strs.EXPIRED_CB)
     
     def _GetCmdReply(self) -> Coroutine[Any, Any, Message] | None:
         # DEclaring variables -----------------------------
@@ -452,36 +466,46 @@ class UserSpace:
             return pages[self.GetFirstInput().data](self.GetId())
         except KeyError:
             try:
-                wiz = wizards[self.GetFirstInput().data](self.GetId())
+                wizType = wizards[self.GetFirstInput().data]
+                self._wizard = wizType(
+                    self.GetId(),
+                    self._dbUser.GetIncUwid())
+                return self._wizard.Start()
             except KeyError:
-                return pages['/help'](self._baleUser.id)
+                buttons = InlineKeyboardMarkup()
+                buttons.add(InlineKeyboardButton(
+                    strs.HELP,
+                    callback_data='/help'))
+                text = strs.UNEX_CMD.format(self.GetFirstInput().data)
+                return self.GetFirstInput().bale_msg.reply(
+                    text,
+                    components=buttons)
+    
+    async def _Reply(self) -> None:
+        self._repState = _ReplyState.RUNNING
+        while self._outputs:
+            await self._outputs.popleft()
+        self._repState = _ReplyState.NONE
 
 
 class UserPool(SDelPool[ID, UserSpace]):
     def __init__(
             self,
-            db: IDatabase,
             *,
-            del_timint=20,
+            del_timint=3_600,
             ) -> None:
         super().__init__(del_timint=del_timint)
-        self._db = db
         self._hooks[SDelHooks.BEFORE_DELETION] = self._Save
         self._hooks[SDelHooks.ACCESS_KEY_ERROR] = self._Load
     
     def _Load(self, key: int, err: KeyError) -> UserData:
-        userData = self._db.GetUser(key)
-        if userData is None:
-            raise err
-        else:
-            self._items[key] = userData
-        logging.debug(f'The user with {key} has been loaded into '
-            f'{self.__class__.__qualname__}')
-        return userData
+        global db
+        userData = db.GetUser(key)
+        uSpace = UserSpace()
+        uSpace._dbUser = userData
+        return uSpace
     
     def _Save(self, key: ID) -> None:
-        self._db.UpsertUser(self._items[key])
+        global db
+        db.UpsertUser(self._items[key]._dbUser)
         logging.debug(f'{self._items[key]} saved to the database.')
-    
-    def Close(self) -> None:
-        super().Clear()

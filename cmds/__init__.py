@@ -61,6 +61,8 @@ def GetHelpPg(id: ID) -> Coroutine[Any, Any, Message]:
     global wizards
     # Functioning -----------------------------------------
     text = strs.HELP_ALL_CMDS
-    text += '\n' + '\n'.join(cmd for cmd in pages)
-    text += '\n' + '\n'.join(cmd for cmd in wizards)
+    if pages:
+        text += '\n' + '\n'.join(cmd for cmd in pages)
+    if wizards:
+        text += '\n' + '\n'.join(cmd for cmd in wizards)
     return pUsers[id].GetFirstInput().bale_msg.reply(text)

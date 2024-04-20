@@ -57,11 +57,11 @@ class SigninWiz(AbsWizard):
 
     _RESTART_CBD = '11'
 
-    def __init__(self, bale_id: ID) -> None:
+    def __init__(self, bale_id: ID, uw_id: int) -> None:
         """Initializes a new instance of the sign-in operation with the
         Bale ID of the user.
         """
-        super().__init__()
+        super().__init__(bale_id, uw_id)
         self._baleId = bale_id
         """The ID of user in the Bale."""
         self._firstName: str | None = None
@@ -70,7 +70,7 @@ class SigninWiz(AbsWizard):
 
     def Start(self) -> Coroutine[Any, Any, Message]:
         return self.Reply(
-            pUsers[self._baleId].GetFirstInput().bale_msg,
+            pUsers[self._baleId].GetFirstInput().bale_msg.reply,
             basic_strs.SIGN_IN_ENTER_FIRST_NAME)
 
     def ReplyText(self) -> WizardRes:

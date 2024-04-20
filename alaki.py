@@ -15,10 +15,13 @@ def Baz() -> None:
 
 
 def main() -> None:
-    from importlib import import_module
-    mods = ['basic',]
-    for name in mods:
-        module = import_module(f'cmds.{name}')
+    from collections import deque
+    from random import randint, random
+    q = deque()
+    for _ in range(randint(0, 100)):
+        q.append(random())
+    while q:
+        print(q.popleft())
 
 
 if __name__ == '__main__':

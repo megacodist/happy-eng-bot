@@ -193,24 +193,28 @@ class HourlyFrequencies:
 
 class UserData:
     """This data structure contains information associated with a typical
-    user of the Bot.
+    user of the Bot in the database.
 
     #### Characteristics
     * Hash protocol: instances are hashable.
     * Equality comparison
     """
+    MAX_UW_ID = 0x0f_0f_0f_0f
+
     def __init__(
             self,
             id: ID,
             first_name: str,
             last_name: str,
             phone: str,
+            uw_id: int = 1,
             freqs: HourlyFrequencies | None = None,
             ) -> None:
         self._id = id
         self._firstName = first_name
         self._lastName = last_name
         self._phone = phone
+        self._uwid = uw_id
         self._hFreqs = freqs if freqs else HourlyFrequencies()
     
     def __eq__(self, __other, /) -> bool:
@@ -229,32 +233,53 @@ class UserData:
     
     @property
     def Id(self) -> ID:
+        """Gets the ID of the user."""
         return self._id
     
     @property
     def FirstName(self) -> str:
+        """Gets or sets the first name of the user."""
         return self._firstName
+    
+    @FirstName.setter
+    def FirstName(self, __fn: str, /) -> None:
+        self._firstName = __fn
     
     @property
     def LastName(self) -> str:
+        """Gets or sets the last name of the user."""
         return self._lastName
+    
+    @LastName.setter
+    def LastName(self, __ln: str, /) -> None:
+        self._lastName = __ln
     
     @property
     def Phone(self) -> str:
+        """Gets or sets the phone number of the user."""
         return self._phone
+    
+    @Phone.setter
+    def Phone(self, __phone: str, /) -> None:
+        self._phone = __phone
+    
+    @property
+    def Uwid(self) -> int:
+        """Gets the unique ID of the next wizard for this user."""
+        return self._uwid
     
     @property
     def Frequencies(self) -> HourlyFrequencies:
         """Gets hourly access frequencies."""
         return self._hFreqs
     
-    def AsTuple(self) -> tuple[int, str, str, str, bytes]:
-        return (
-            self._id,
-            self._firstName,
-            self._lastName,
-            self._phone,
-            self._hFreqs.Bytes)
+    def GetIncUwid(self) -> int:
+        """Gets the current UWID (unique wizard ID) and increments it for
+        the next call.
+        """
+        uwid = self._uwid
+        self._uwid += 1
+        return uwid
 
 
 class IDatabase(ABC):
