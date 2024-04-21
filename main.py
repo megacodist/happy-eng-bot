@@ -31,7 +31,13 @@ _happyEngBot: Bot
 db: IDatabase
 """The database of the Bot."""
 
-pUsers = UserPool()
+MIN_USER_LS: int = 3_600
+"""The minimum life span of `UserSpace` objects in seconds."""
+
+PERCENT_LIFE = 0.05
+""""""
+
+pUsers = UserPool(del_timint=MIN_USER_LS)
 """A mapping of `ID -> UserData` contains all information of recent users
 of the Bot.
 """
@@ -68,6 +74,7 @@ def _LoadPagesWizards() -> None:
 	from importlib import import_module
 	from types import ModuleType
 	global ADMIN_IDS
+	global MIN_USER_LS
 	global db
 	global pUsers
 	global pages
@@ -83,7 +90,8 @@ def _LoadPagesWizards() -> None:
 		'db_': db,
 		'pUsers_': pUsers,
 		'pages_': pages,
-		'wizards_': wizards,}
+		'wizards_': wizards,
+		'MIN_USER_LS_': MIN_USER_LS,}
 	cmds.InitModule(**botVars)
 	pages.update({pg.cmd:pg.callback for pg in cmds.GetPages()})
 	wizards.update({wiz.CMD:wiz for wiz in cmds.GetWizards()})
@@ -134,6 +142,7 @@ def _InitOtherModules() -> None:
 	# Declaring variables ---------------------------------
 	import utils.types
 	global ADMIN_IDS
+	global MIN_USER_LS
 	global db
 	global pUsers
 	global pages
@@ -144,7 +153,8 @@ def _InitOtherModules() -> None:
 		'db_': db,
 		'pUsers_': pUsers,
 		'pages_':pages,
-		'wizards_': wizards,}
+		'wizards_': wizards,
+		'MIN_USER_LS_': MIN_USER_LS,}
 	utils.types.InitModule(**botVars)
 
 
@@ -155,10 +165,18 @@ async def _DispatchInput(
 		input_: str | None,
 		) -> Coroutine[Any, Any, None]:
 	"""Disptaches the user input."""
-	inputExists = pUsers[bale_user.id].CountInputs() > 0
-	pUsers[bale_user.id].ApendInput(UserInput(bale_msg, type_, input_))
-	pUsers[bale_user.id]._baleUser = bale_user
-	pUsers[bale_user.id]._dbUser.Frequencies.Increment(bale_msg.date.hour)
+	userSpace = pUsers.GetItemBypass(bale_user.id)
+	inputExists = userSpace.CountInputs() > 0
+	userSpace.ApendInput(UserInput(bale_msg, type_, input_))
+	userSpace.baleUser = bale_user
+	userSpace.dbUser.Frequencies.Increment(bale_msg.date.hour)
+	# Getting the suitable life span for the UserSpace object...
+	hour = 0 if bale_msg.date.hour == 23 else (bale_msg.date.hour + 1)
+	duration = userSpace.SuggestLS(hour, PERCENT_LIFE)
+	logging.debug(f"user with {bale_user.id} ID will be in memory for at "
+		f"least {duration} hour(s).")
+	pUsers.ScheduleDel(bale_user.id, duration * MIN_USER_LS)
+	# Replying...
 	if inputExists:
 		return
 	while pUsers[bale_user.id].CountInputs() > 0:

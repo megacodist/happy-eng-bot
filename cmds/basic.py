@@ -57,11 +57,11 @@ class SigninWiz(AbsWizard):
 
     _RESTART_CBD = '11'
 
-    def __init__(self, bale_id: ID, uw_id: int) -> None:
+    def __init__(self, bale_id: ID, uwid: int) -> None:
         """Initializes a new instance of the sign-in operation with the
         Bale ID of the user.
         """
-        super().__init__(bale_id, uw_id)
+        super().__init__(bale_id, uwid)
         self._baleId = bale_id
         """The ID of user in the Bale."""
         self._firstName: str | None = None
@@ -131,7 +131,7 @@ class SigninWiz(AbsWizard):
         global pUsers
         match pUsers[self._baleId].GetFirstInput().data:
             case self._CONFIRM_CBD:
-                pUsers[self._baleId]._dbUser = UserData(
+                pUsers[self._baleId].dbUser = UserData(
                     self._baleId,
                     self._firstName,
                     self._lastName,
@@ -146,6 +146,19 @@ class SigninWiz(AbsWizard):
                 logging.error(f'{pUsers[self._baleId].GetFirstInput().data}:'
                     f' unknown callback in {self.__class__.__qualname__}')
                 return WizardRes(None, False,)
+    
+    def _Confirm(self) -> WizardRes:
+        pair = '{}: {}'
+        text = strs.CONFIRM_DATA
+        text += '\n' + pair.format(basic_strs.FIRST_NAME, self._firstName)
+        text += '\n' + pair.format(basic_strs.LAST_NAME, self._lastName)
+        text += '\n' + pair.format(basic_strs.PHONE, self._phone)
+        return WizardRes(
+            self.Reply(
+                pUsers.GetItemBypass(
+                    self._baleId).GetFirstInput().bale_msg.reply,
+                text,),
+            False,)
     
     def _AppendRestartBtn(self, buttons: InlineKeyboardMarkup) -> None:
         """Appends 'Restart' button to the `buttons`."""

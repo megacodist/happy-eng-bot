@@ -19,9 +19,12 @@ class HourlyFrequencies:
 
     Normalization: when at least one of the frequencies exceeds the
     limit, all values will be normalized, i.e. all frequencies will
-    be devided by two until all of them fulfill the length limit.
+    be halved until all of them fulfill the length limit.
     
-    This class is NOT thread-safe.
+    #### Characteristics:
+    1. This class is NOT thread-safe.
+    2. Memeber access: `freq = hFreq[hour]`
+    3. Memeber assignment: `hFreq[hour] = freq`
     """
 
     @classmethod
@@ -54,6 +57,8 @@ class HourlyFrequencies:
         """
         self._freqs = [0] * 24
         """A list of 24 integers for number of access in each hour."""
+        self._sum = 0
+        """The sum of frequencies."""
     
     def __repr__(self) -> str:
         hoursFreqs = ', '.join(
@@ -67,6 +72,10 @@ class HourlyFrequencies:
     
     def __setitem__(self, __hour: int, __freq: int, /) -> None:
         self.SetHourFreq(__hour, __freq)
+    
+    def __delitem__(self, __hour: int, ) -> None:
+        raise TypeError(f'{self.__class__.__qualname__} does NOT support'
+            ' member deletion')
     
     @property
     def BytesCount(self) -> int:
@@ -111,6 +120,7 @@ class HourlyFrequencies:
         with BytesIO(__buf) as bufObj:
             for idx in range(24):
                 self._freqs[idx] = int.from_bytes(bufObj.read(self._nBytes))
+        self._sum = sum(self._freqs)
     
     @property
     def Frequencies(self) -> tuple[int, ...]:
@@ -147,7 +157,9 @@ class HourlyFrequencies:
             raise TypeError('frequency of an hour must be an integer not '
                 f'{__freq.__class__.__qualname__}')
         try:
+            prevFreq = self._freqs[__hour]
             self._freqs[__hour] = __freq
+            self._sum += (__freq - prevFreq)
         except TypeError as err:
             err.args = ('hour must be an inteher not '
                 f'{__hour.__class__.__qualname__}',)
@@ -164,6 +176,10 @@ class HourlyFrequencies:
         """Increments the specified hour, normalizes if necessary."""
         self.SetHourFreq(__hour, self.GetHourFreq(__hour) + 1)
     
+    def GetPercent(self, hour: int) -> float:
+        """Gets the percent frequency for a specified hour."""
+        return self._freqs[hour] / self._sum
+    
     def _ShiftFreqs(self, __n: int, /) -> None:
         """Shifts all frequencies `n` bits. For positive integers this
         shift is to the right, for negatives to the left, and for zero
@@ -175,10 +191,12 @@ class HourlyFrequencies:
         if __n > 0:
             for idx in range(24):
                 self._freqs[idx] = self._freqs[idx] >> __n
+            self._sum = sum(self._freqs)
         elif __n < 0:
             __n = -__n
             for idx in range(24):
                 self._freqs[idx] = self._freqs[idx] << __n
+            self._sum = sum(self._freqs)
     
     def _GetExtraBits(self, __num: int, /) -> None:
         """Returns the number of extra bits of the provided number compared
@@ -204,9 +222,9 @@ class UserData:
     def __init__(
             self,
             id: ID,
-            first_name: str,
-            last_name: str,
-            phone: str,
+            first_name: str | None = None,
+            last_name: str | None = None,
+            phone: str | None = None,
             uw_id: int = 1,
             freqs: HourlyFrequencies | None = None,
             ) -> None:
