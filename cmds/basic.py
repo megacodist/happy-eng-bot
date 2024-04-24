@@ -10,13 +10,13 @@ from bale import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from db import UserData
 import lang as strs
 import lang.cmds.basic as basic_strs
-from utils.types import AbsWizard, ID, Page, PgCallback, UserPool, WizardRes
+from utils.types import AbsWizard, ID, AbsPage, UserPool, WizardRes
 
 
 # Bot-wide variables ================================================
 pUsers: UserPool
 
-pages: dict[str, Callable[[ID], Coroutine[Any, Any, Message]]]
+pages: dict[str, AbsPage]
 
 wizards: dict[str, AbsWizard]
 
@@ -24,7 +24,7 @@ wizards: dict[str, AbsWizard]
 def InitModule(
         *,
         pUsers_: UserPool,
-        pages_: dict[str, PgCallback],
+        pages_: dict[str, AbsPage],
         wizards_: dict[str, AbsWizard],
         **kwargs
         ) -> None:
@@ -37,7 +37,7 @@ def InitModule(
     wizards = wizards_
 
 
-def GetPages() -> tuple[Page, ...]:
+def GetPages() -> tuple[AbsPage, ...]:
     """Gets a tuple of all implemented `Page`s in this module."""
     return tuple()
 

@@ -10,7 +10,7 @@ from typing import Any, Callable, Coroutine
 from bale import Message
 
 from db import ID
-from utils.types import AbsWizard, Page, PgCallback, UserPool
+from utils.types import AbsWizard, AbsPage, UserPool
 
 
 # ===================================================================
@@ -18,7 +18,7 @@ from utils.types import AbsWizard, Page, PgCallback, UserPool
 # ===================================================================
 pUsers: UserPool
 
-pages: dict[str, PgCallback]
+pages: dict[str, AbsPage]
 
 wizards: dict[str, AbsWizard]
 
@@ -28,7 +28,7 @@ wizards: dict[str, AbsWizard]
 # ===================================================================
 def InitModule(
         *,
-        pages_: dict[str, PgCallback],
+        pages_: dict[str, AbsPage],
         wizards_: dict[str, AbsWizard],
         pUsers_: UserPool,
         **kwargs
@@ -42,7 +42,7 @@ def InitModule(
     pUsers = pUsers_
 
 
-def GetPages() -> tuple[Page, ...]:
+def GetPages() -> tuple[AbsPage, ...]:
     """Gets a tuple of all implemented `Page`s in this module."""
     return tuple([Page('/help', GetHelpPg)])
 
@@ -50,6 +50,26 @@ def GetPages() -> tuple[Page, ...]:
 def GetWizards() -> tuple[AbsWizard, ...]:
     """Gets a tuple of all implemented `Wizard`s in this module."""
     return tuple()
+
+
+class HelpPage(AbsPage):
+    CMD = '/help'
+
+    @classmethod
+    async def Show(self, bale_id: ID) -> Coroutine[Any, Any, None]:
+        """Gets a list of all available commands."""
+        # Declaring variables ---------------------------------
+        import lang as strs
+        global pUsers
+        global pages
+        global wizards
+        # Functioning -----------------------------------------
+        text = strs.HELP_ALL_CMDS
+        if pages:
+            text += '\n' + '\n'.join(cmd for cmd in pages)
+        if wizards:
+            text += '\n' + '\n'.join(cmd for cmd in wizards)
+        return pUsers[id].GetFirstInput().bale_msg.reply(text)
 
 
 def GetHelpPg(id: ID) -> Coroutine[Any, Any, Message]:

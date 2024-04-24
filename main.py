@@ -12,7 +12,8 @@ from bale import (
 
 from cmds import Page, AbsWizard
 from db import IDatabase
-from utils.types import InputType, UserInput, UserPool
+from utils.types import (
+	AbsInput, CbInput, CmdInput, InputType, TextInput, UserInput, UserPool, UserSpace)
 
 
 # Bot-wide variables ================================================
@@ -159,28 +160,27 @@ def _InitOtherModules() -> None:
 
 
 async def _DispatchInput(
-		bale_msg: Message,
+		input_: AbsInput,
 		bale_user: User,
-		type_: InputType,
-		input_: str | None,
 		) -> Coroutine[Any, Any, None]:
-	"""Disptaches the user input."""
+	# Declaring variables ---------------------------------
+	global pUsers
+	userSpace: UserSpace
+	hour: int
+	duration: int
+	# Diaptching ------------------------------------------
 	userSpace = pUsers.GetItemBypass(bale_user.id)
-	inputExists = userSpace.CountInputs() > 0
-	userSpace.ApendInput(UserInput(bale_msg, type_, input_))
 	userSpace.baleUser = bale_user
-	userSpace.dbUser.Frequencies.Increment(bale_msg.date.hour)
+	userSpace.dbUser.Frequencies.Increment(input_.bale_msg.date.hour)
 	# Getting the suitable life span for the UserSpace object...
-	hour = 0 if bale_msg.date.hour == 23 else (bale_msg.date.hour + 1)
+	hour = input_.bale_msg.date.hour
+	hour = 0 if hour == 23 else (hour + 1)
 	duration = userSpace.SuggestLS(hour, PERCENT_LIFE)
 	logging.debug(f"user with {bale_user.id} ID will be in memory for at "
 		f"least {duration} hour(s).")
 	pUsers.ScheduleDel(bale_user.id, duration * MIN_USER_LS)
-	# Replying...
-	if inputExists:
-		return
-	while pUsers[bale_user.id].CountInputs() > 0:
-		pUsers[bale_user.id].ReplyNextInput()
+	# Digesting the user input...
+	await userSpace.ApendInput(input_)
 
 
 def _CreateBot() -> None:
@@ -205,16 +205,12 @@ def _CreateBot() -> None:
 			return
 		if bale_msg.content.startswith('/'):
 			await _DispatchInput(
-				bale_msg,
-				bale_msg.from_user,
-				InputType.COMMAND,
-				bale_msg.text,)
+				CmdInput(bale_msg, bale_msg.from_user.id, bale_msg.text),
+				bale_msg.from_user)
 		else:
 			await _DispatchInput(
-				bale_msg,
-				bale_msg.from_user,
-				InputType.TEXT,
-				bale_msg.text,)
+				TextInput(bale_msg, bale_msg.from_user.id, bale_msg.text),
+				bale_msg.from_user,)
 
 	@_happyEngBot.event
 	async def on_message_edit(message: Message) -> None:
@@ -236,16 +232,12 @@ def _CreateBot() -> None:
 			return
 		if bale_cb.data.startswith('/'):
 			await _DispatchInput(
-				bale_cb.message,
-				bale_cb.from_user,
-				InputType.COMMAND,
-				bale_cb.data,)
+				CmdInput(bale_cb.message, bale_cb.from_user.id, bale_cb.data),
+				bale_cb.from_user,)
 		else:
 			await _DispatchInput(
-				bale_cb.message,
-				bale_cb.from_user,
-				InputType.CALLBACK,
-				bale_cb.data,)
+				CbInput(bale_cb.message, bale_cb.from_user.id, bale_cb.data),
+				bale_cb.from_user,)
 
 	@_happyEngBot.event
 	async def on_member_chat_join(

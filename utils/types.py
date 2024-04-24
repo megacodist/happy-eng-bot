@@ -31,22 +31,27 @@ wizards: dict[str, AbsWizard]
 
 db: IDatabase
 
+pUsers: UserPool
+
 
 def InitModule(
         *,
         pages_: dict[str, PgCallback],
         wizards_: dict[str, AbsWizard],
         db_: IDatabase,
+        pUsers_: UserPool,
         **kwargs,
         ) -> None:
     # Declaring variables ---------------------------------
     global pages
     global wizards
     global db
+    global pUsers
     # Functoning ------------------------------------------
     pages = pages_
     wizards = wizards_
     db = db_
+    pUsers = pUsers_
 
 
 class SDelHooks(enum.IntEnum):
@@ -265,20 +270,6 @@ class SDelPool[_Hashable, _SDelType]:
             self.DelItem(key)
 
 
-type PgCallback = Callable[[ID], Coroutine[Any, Any, Message]]
-"""The signature for any callable object to be qualified as a `Page`."""
-
-
-class Page:
-    def __init__(
-            self,
-            cmd: str,
-            callback: PgCallback,
-            ) -> None:
-        self.cmd = cmd
-        self.callback = callback
-
-
 class WizardRes:
     def __init__(
             self,
@@ -287,6 +278,16 @@ class WizardRes:
             ) -> None:
         self.reply = reply
         self.finished = finished
+
+
+class AbsPage(ABC):
+    CMD: str
+    """The literal of this command."""
+
+    @classmethod
+    @abstractmethod
+    async def Show(self, bale_id: ID) -> Coroutine[Any, Any, None]:
+        pass
 
 
 class AbsWizard(ABC):
@@ -301,7 +302,7 @@ class AbsWizard(ABC):
     CMD: str
     """The literal of this command."""
     
-    def __init__(self, bale_id: ID, uw_id: int) -> None:
+    def __init__(self, bale_id: ID, uw_id: str) -> None:
         self._baleId = bale_id
         """The ID of the user in the Bale."""
         self._UWID = uw_id
@@ -309,7 +310,7 @@ class AbsWizard(ABC):
         self._lastReply: Coroutine[Any, Any, Message] | None = None
         """The last reply of the operation."""
     
-    def __hash__(self) -> int:
+    def __hash__(self) -> str:
         return self._UWID
 
     def __eq__(self, __obj, /) -> bool:
@@ -318,7 +319,7 @@ class AbsWizard(ABC):
         return NotImplemented
     
     @property
-    def Uwid(self) -> int:
+    def Uwid(self) -> str:
         """Returns the unique ID of this operation."""
         return self._UWID
     
@@ -349,18 +350,18 @@ class AbsWizard(ABC):
             return self._lastReply()
     
     @abstractmethod
-    def Start(self)  -> WizardRes:
+    async def Start(self)  -> WizardRes:
         """Starts this operation."""
         pass
 
     @abstractmethod
-    def ReplyText(self) -> WizardRes:
+    async def ReplyText(self) -> WizardRes:
         """Optionally replies the provided text. It must return `True` if
         the operation finished otherwise `False`.
         """
         pass
 
-    def ReplyCallback(self) -> WizardRes:
+    async def ReplyCallback(self) -> WizardRes:
         """Optionally replies the provided callback. It must return `True`
         if the operation finished otherwise `False`. Callback data are in the
         format of `<uwid>-<cbnum>-<optional>`. The `Uwid` must be eliminated
@@ -388,20 +389,117 @@ class UserInput:
         self.data = data
 
 
-class _ReplyState(enum.IntEnum):
-    NONE = enum.auto()
-    """No reply is available."""
+class AbsInput(ABC):
+    def __init__(
+            self,
+            bale_msg: Message,
+            bale_id: ID,
+            ) -> None:
+        self.bale_msg = bale_msg
+        self.bale_id = bale_id
+    
+    @abstractmethod
+    async def Digest(self) -> None:
+        pass
+
+
+class TextInput(AbsInput):
+    def __init__(
+            self,
+            bale_msg: Message,
+            bale_id: ID,
+            text: str,
+            ) -> None:
+        super().__init__(bale_msg, bale_id)
+        self.text = text
+    
+    async def Digest(self) -> None:
+        uSpace = pUsers.GetItemBypass(self.bale_id)
+        if uSpace._wizard:
+            res = await uSpace._wizard.ReplyText()
+            if res.finished:
+                uSpace._wizard = None
+            await uSpace.AppendOutput(res.reply)
+        else:
+            await uSpace.AppendOutput(self.bale_msg.reply(strs.UNEX_DATA))
+
+
+class CbInput(AbsInput):
+    def __init__(
+            self,
+            bale_msg: Message,
+            bale_id: ID,
+            cb_data: str,
+            ) -> None:
+        super().__init__(bale_msg, bale_id)
+        parts = cb_data.split('-', 2)
+        self.uwid = parts[0]
+        self.cb = parts[1]
+        self.extra = tuple(parts[2:])
+    
+    async def Digest(self) -> None:
+        global pUsers
+        userSpace = pUsers.GetItemBypass(self.bale_id)
+        if (not userSpace._wizard) or (userSpace._wizard.CMD != self.uwid):
+            res = await userSpace._wizard.ReplyCallback()
+            if res.finished:
+                userSpace._wizard = None
+            await userSpace.AppendOutput(res.reply)
+        else:
+            await userSpace.AppendOutput(self.bale_msg.reply(strs.EXPIRED_CB))
+
+
+class CmdInput(AbsInput):
+    def __init__(
+            self,
+            bale_msg: Message,
+            bale_id: ID,
+            input_: str,
+            ) -> None:
+        super().__init__(bale_msg, bale_id)
+        parts = input_.split()
+        self.cmd = parts[0].lower()
+        self.args = tuple(parts[1:])
+    
+    async def Digest(self) -> None:
+        # DEclaring variables -----------------------------
+        global pages
+        global wizards
+        # Dispatching command -----------------------------
+        try:
+            return pages[self.cmd](self.bale_id)
+        except KeyError:
+            try:
+                wizType = wizards[self.GetFirstInput().data]
+                self._wizard = wizType(
+                    self.GetId(),
+                    self.dbUser.GetIncUwid())
+                return self._wizard.Start()
+            except KeyError:
+                buttons = InlineKeyboardMarkup()
+                buttons.add(InlineKeyboardButton(
+                    strs.HELP,
+                    callback_data='/help'))
+                text = strs.UNEX_CMD.format(self.GetFirstInput().data)
+                return self.GetFirstInput().bale_msg.reply(
+                    text,
+                    components=buttons)
+
+
+class _State(enum.IntEnum):
+    SLEEP = enum.auto()
     PENDING = enum.auto()
-    """Relying is scheduled for later."""
     RUNNING = enum.auto()
-    """Replying is in progress."""
 
 
 class UserSpace:
     def __init__(self) -> None:
-        self._inputs: deque[UserInput] = deque()
+        self._inputs: deque[AbsInput] = deque()
         self._outputs: deque[Coroutine[Any, Any, Message]] = deque()
-        self._repState = _ReplyState.NONE
+        self._digState = _State.SLEEP
+        """The state of digestive algorithm."""
+        self._repState = _State.SLEEP
+        """The state of replying algorithm."""
         self.baleUser: User | None = None
         self.dbUser: UserData | None = None
         """The data of user in the database or `None` if the user has not
@@ -410,16 +508,18 @@ class UserSpace:
         self._wizard: AbsWizard | None = None
         """The ongoing wizard."""
     
-    def ApendInput(self, ui: UserInput) -> None:
-        self._inputs.append(ui)
+    async def ApendInput(self, input_: AbsInput) -> None:
+        self._inputs.append(input_)
+        if self._digState == _State.SLEEP:
+            self._digState = _State.PENDING
+            await self._Digest()
     
-    def AppendOutput(self, reply: Coroutine[Any, Any, Message]) -> None:
+    async def AppendOutput(self, reply: Coroutine[Any, Any, Message]) -> None:
         import asyncio
         self._outputs.append(reply)
-        if self._repState == _ReplyState.NONE:
-            loop = asyncio.get_running_loop()
-            loop.create_task(self._Reply())
-            self._repState = _ReplyState.PENDING
+        if self._repState == _State.SLEEP:
+            self._repState = _State.PENDING
+            await self._Reply()
     
     def CountInputs(self) -> int:
         """Returns number of inputs."""
@@ -428,13 +528,13 @@ class UserSpace:
     def GetId(self) -> ID:
         return self.baleUser.id
     
-    def GetFirstInput(self) -> UserInput:
+    def GetFirstInput(self) -> AbsInput:
         """Gets first input from the queue without poping it. It raises
         `IndexError` if the queue is empty.
         """
         return self._inputs[0]
     
-    def PopFirstInput(self) -> UserInput:
+    def PopFirstInput(self) -> AbsInput:
         """Gets and removes first input from the queue. It raises
         `IndexError` if the queue is empty.
         """
@@ -454,43 +554,6 @@ class UserSpace:
             else:
                 break
         return duration
-    
-    def ReplyNextInput(self) -> Coroutine[Any, Any, Message] | None:
-        """Gets the reply for the next input and removes it from this
-        user sapce object. It does nothing if there is no input.
-        """
-        try:
-            input_ = self.GetFirstInput()
-        except IndexError:
-            return
-        match input_.type_:
-            case InputType.TEXT:
-                reply = self._GetTextReply()
-            case InputType.CALLBACK:
-                reply = self._GetCbReply()
-            case InputType.COMMAND:
-                reply = self._GetCmdReply()
-        self.PopFirstInput()
-        if reply:
-            self.AppendOutput(reply)
-    
-    def _GetTextReply(self) -> Coroutine[Any, Any, Message] | None:
-        if self._wizard:
-            res = self._wizard.ReplyText()
-            if res.finished:
-                self._wizard = None
-            return res.reply
-        else:
-            return self.GetFirstInput().bale_msg.reply(strs.UNEX_DATA)
-    
-    def _GetCbReply(self) -> Coroutine[Any, Any, Message] | None:
-        if self._wizard:
-            res = self._wizard.ReplyCallback()
-            if res.finished:
-                self._wizard = None
-            return res.reply
-        else:
-            return self.GetFirstInput().bale_msg.reply(strs.EXPIRED_CB)
     
     def _GetCmdReply(self) -> Coroutine[Any, Any, Message] | None:
         # DEclaring variables -----------------------------
@@ -516,11 +579,18 @@ class UserSpace:
                     text,
                     components=buttons)
     
-    async def _Reply(self) -> None:
-        self._repState = _ReplyState.RUNNING
+    async def _Digest(self) -> Coroutine[Any, Any, None]:
+        self._digState = _State.RUNNING
+        while self._inputs:
+            await self.GetFirstInput().Digest()
+            self.PopFirstInput()
+        self._digState = _State.SLEEP
+    
+    async def _Reply(self) -> Coroutine[Any, Any, None]:
+        self._repState = _State.RUNNING
         while self._outputs:
             await self._outputs.popleft()
-        self._repState = _ReplyState.NONE
+        self._repState = _State.SLEEP
 
 
 class UserPool(SDelPool[ID, UserSpace]):
