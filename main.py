@@ -10,10 +10,10 @@ from typing import Any, Callable, Coroutine
 from bale import (
     Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment)
 
-from cmds import Page, AbsWizard
 from db import IDatabase
 from utils.types import (
-	AbsInput, CbInput, CmdInput, InputType, TextInput, UserInput, UserPool, UserSpace)
+	AbsInput, AbsPage, AbsWizard, CbInput, CmdInput, TextInput,
+	UserPool, UserSpace)
 
 
 # Bot-wide variables ================================================
@@ -94,7 +94,7 @@ def _LoadPagesWizards() -> None:
 		'wizards_': wizards,
 		'MIN_USER_LS_': MIN_USER_LS,}
 	cmds.InitModule(**botVars)
-	pages.update({pg.cmd:pg.callback for pg in cmds.GetPages()})
+	pages.update({pg.CMD:pg for pg in cmds.GetPages()})
 	wizards.update({wiz.CMD:wiz for wiz in cmds.GetWizards()})
 	# Initializing & loading the other module of commands package...
 	modsDir = _APP_DIR / 'cmds'
@@ -108,7 +108,7 @@ def _LoadPagesWizards() -> None:
 		try:
 			modObj = import_module(f'cmds.{modName.stem}')
 			modObj.InitModule(**botVars)
-			modPages: tuple[Page, ...] = modObj.GetPages()
+			modPages: tuple[AbsPage, ...] = modObj.GetPages()
 			modWizards: tuple[AbsWizard, ...] = modObj.GetWizards()
 			dPages = {page.cmd:page.callback for page in modPages}
 			dWizards = {wiz.CMD:wiz for wiz in modWizards}
@@ -175,7 +175,7 @@ async def _DispatchInput(
 	# Getting the suitable life span for the UserSpace object...
 	hour = input_.bale_msg.date.hour
 	hour = 0 if hour == 23 else (hour + 1)
-	duration = userSpace.SuggestLS(hour, PERCENT_LIFE)
+	duration = userSpace.SuggestLS(hour, PERCENT_LIFE) + 1
 	logging.debug(f"user with {bale_user.id} ID will be in memory for at "
 		f"least {duration} hour(s).")
 	pUsers.ScheduleDel(bale_user.id, duration * MIN_USER_LS)
@@ -270,8 +270,12 @@ def _CreateBot() -> None:
 
 
 async def _StartBot() -> None:
+	from bale.error import NetworkError
 	async with _happyEngBot:
-		await _happyEngBot.connect()
+		try:
+			await _happyEngBot.connect()
+		except NetworkError:
+			pass
 
 
 def BotMain() -> None:

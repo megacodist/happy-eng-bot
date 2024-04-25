@@ -25,7 +25,7 @@ import lang as strs
 
 
 # Bot-wide variables ================================================
-pages: dict[str, PgCallback]
+pages: dict[str, AbsPage]
 
 wizards: dict[str, AbsWizard]
 
@@ -36,7 +36,7 @@ pUsers: UserPool
 
 def InitModule(
         *,
-        pages_: dict[str, PgCallback],
+        pages_: dict[str, AbsPage],
         wizards_: dict[str, AbsWizard],
         db_: IDatabase,
         pUsers_: UserPool,
@@ -284,6 +284,9 @@ class AbsPage(ABC):
     CMD: str
     """The literal of this command."""
 
+    DESCR: str
+    """The description of the page."""
+
     @classmethod
     @abstractmethod
     async def Show(self, bale_id: ID) -> Coroutine[Any, Any, None]:
@@ -301,6 +304,9 @@ class AbsWizard(ABC):
 
     CMD: str
     """The literal of this command."""
+
+    DESCR: str
+    """The description of the page."""
     
     def __init__(self, bale_id: ID, uw_id: str) -> None:
         self._baleId = bale_id
@@ -399,7 +405,7 @@ class AbsInput(ABC):
         self.bale_id = bale_id
     
     @abstractmethod
-    async def Digest(self) -> None:
+    async def Digest(self) -> Coroutine[Any, Any, None]:
         pass
 
 
@@ -413,7 +419,7 @@ class TextInput(AbsInput):
         super().__init__(bale_msg, bale_id)
         self.text = text
     
-    async def Digest(self) -> None:
+    async def Digest(self) -> Coroutine[Any, Any, None]:
         uSpace = pUsers.GetItemBypass(self.bale_id)
         if uSpace._wizard:
             res = await uSpace._wizard.ReplyText()
@@ -437,14 +443,15 @@ class CbInput(AbsInput):
         self.cb = parts[1]
         self.extra = tuple(parts[2:])
     
-    async def Digest(self) -> None:
+    async def Digest(self) -> Coroutine[Any, Any, None]:
         global pUsers
         userSpace = pUsers.GetItemBypass(self.bale_id)
         if (not userSpace._wizard) or (userSpace._wizard.CMD != self.uwid):
             res = await userSpace._wizard.ReplyCallback()
             if res.finished:
                 userSpace._wizard = None
-            await userSpace.AppendOutput(res.reply)
+            if res.reply:
+                await userSpace.AppendOutput(res.reply)
         else:
             await userSpace.AppendOutput(self.bale_msg.reply(strs.EXPIRED_CB))
 
@@ -461,27 +468,30 @@ class CmdInput(AbsInput):
         self.cmd = parts[0].lower()
         self.args = tuple(parts[1:])
     
-    async def Digest(self) -> None:
+    async def Digest(self) -> Coroutine[Any, Any, None]:
         # DEclaring variables -----------------------------
+        global pUsers
         global pages
         global wizards
         # Dispatching command -----------------------------
         try:
-            return pages[self.cmd](self.bale_id)
+            pageType = pages[self.cmd]
+            return await pageType.Show(self.bale_id)
         except KeyError:
             try:
-                wizType = wizards[self.GetFirstInput().data]
-                self._wizard = wizType(
-                    self.GetId(),
-                    self.dbUser.GetIncUwid())
-                return self._wizard.Start()
+                wizType = wizards[self.cmd]
+                userSpace = pUsers.GetItemBypass(self.bale_id)
+                userSpace._wizard = wizType(
+                    self.bale_id,
+                    userSpace.dbUser.GetIncUwid())
+                return await userSpace._wizard.Start()
             except KeyError:
                 buttons = InlineKeyboardMarkup()
                 buttons.add(InlineKeyboardButton(
                     strs.HELP,
                     callback_data='/help'))
-                text = strs.UNEX_CMD.format(self.GetFirstInput().data)
-                return self.GetFirstInput().bale_msg.reply(
+                text = strs.UNEX_CMD.format(self.cmd)
+                return await self.bale_msg.reply(
                     text,
                     components=buttons)
 

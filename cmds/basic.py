@@ -53,6 +53,8 @@ class SigninWiz(AbsWizard):
     """
     CMD = '/signin'
 
+    DESCR = basic_strs.SIGNIN_INTRO
+
     _CONFIRM_CBD = '10'
 
     _RESTART_CBD = '11'
@@ -68,12 +70,19 @@ class SigninWiz(AbsWizard):
         self._lastName: str | None = None
         self._phone: str | None = None
 
-    def Start(self) -> Coroutine[Any, Any, Message]:
+    async def Start(self) -> Coroutine[Any, Any, Message]:
+        global pUsers
+        userSpace = pUsers.GetItemBypass(self._baleId)
+        self._firstName = userSpace.dbUser._firstName
+        self._lastName = userSpace.dbUser._lastName
+        self._phone = userSpace.dbUser._phone
+        if self._firstName and self._lastName and self._phone:
+            return await self._Confirm()
         return self.Reply(
             pUsers[self._baleId].GetFirstInput().bale_msg.reply,
             basic_strs.SIGN_IN_ENTER_FIRST_NAME)
 
-    def ReplyText(self) -> WizardRes:
+    async def ReplyText(self) -> WizardRes:
         """Gets from user and fills folowing items in consecutive calls:
         1. first name
         2. last name
@@ -127,11 +136,14 @@ class SigninWiz(AbsWizard):
             logging.error('E1-3')
             return WizardRes(None, False,)
 
-    def ReplyCallback(self) -> WizardRes:
+    async def ReplyCallback(self) -> WizardRes:
+        from utils.types import CbInput
         global pUsers
-        match pUsers[self._baleId].GetFirstInput().data:
+        userSpace = pUsers.GetItemBypass(self._baleId)
+        input_: CbInput = userSpace.GetFirstInput()
+        match input_.cb:
             case self._CONFIRM_CBD:
-                pUsers[self._baleId].dbUser = UserData(
+                userSpace.dbUser = UserData(
                     self._baleId,
                     self._firstName,
                     self._lastName,
@@ -147,23 +159,31 @@ class SigninWiz(AbsWizard):
                     f' unknown callback in {self.__class__.__qualname__}')
                 return WizardRes(None, False,)
     
-    def _Confirm(self) -> WizardRes:
+    async def _Confirm(self) -> WizardRes:
+        global pUsers
         pair = '{}: {}'
         text = strs.CONFIRM_DATA
         text += '\n' + pair.format(basic_strs.FIRST_NAME, self._firstName)
         text += '\n' + pair.format(basic_strs.LAST_NAME, self._lastName)
         text += '\n' + pair.format(basic_strs.PHONE, self._phone)
+        buttons = InlineKeyboardMarkup()
+        buttons.add(self._GetConfirmBtn())
+        buttons.add(self._GetRestartBtn())
         return WizardRes(
             self.Reply(
                 pUsers.GetItemBypass(
                     self._baleId).GetFirstInput().bale_msg.reply,
-                text,),
+                text,
+                components=buttons,),
             False,)
     
-    def _AppendRestartBtn(self, buttons: InlineKeyboardMarkup) -> None:
-        """Appends 'Restart' button to the `buttons`."""
-        buttons.add(InlineKeyboardButton(
+    def _GetRestartBtn(self) -> InlineKeyboardButton:
+        """Gets 'Restart' button."""
+        return InlineKeyboardButton(
             strs.RESTART,
-            callback_data=f'{self._RESTART_CBD}'))
+            callback_data=f'{self.Uwid}-{self._RESTART_CBD}')
 
-
+    def _GetConfirmBtn(self) -> InlineKeyboardButton:
+        return InlineKeyboardButton(
+            strs.CONFIRM,
+            callback_data=f'{self.Uwid}-{self._CONFIRM_CBD}')
