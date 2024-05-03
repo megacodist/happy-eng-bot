@@ -13,15 +13,12 @@ from bale import (
 from db import IDatabase
 from utils.types import (
 	AbsInput, AbsPage, AbsWizard, CbInput, CmdInput, TextInput,
-	UserPool, UserSpace)
+	BotVars, UserSpace)
 
 
 # Bot-wide variables ================================================
 _APP_DIR = Path(__file__).resolve().parent
 """The directory of the Bot."""
-
-ADMIN_IDS: tuple[int, ...]
-"""A tuple of ID's of admin users."""
 
 _TOKEN: str
 """The token of the Bale bot."""
@@ -29,34 +26,19 @@ _TOKEN: str
 _happyEngBot: Bot
 """The Bot object for this @happy_eng_bot."""
 
-db: IDatabase
-"""The database of the Bot."""
-
-MIN_USER_LS: int = 3_600
-"""The minimum life span of `UserSpace` objects in seconds."""
-
-PERCENT_LIFE = 0.05
-""""""
-
-pUsers = UserPool(del_timint=MIN_USER_LS)
-"""A mapping of `ID -> UserData` contains all information of recent users
-of the Bot.
-"""
-
-pages: dict[str, Callable] = {}
-
-wizards: dict[str, AbsWizard] = {}
+botVars = BotVars()
+"""This data structure consolidate bot-wide variables."""
 
 
 def _LoadConfig() -> None:
 	# Declaring variables ---------------------------------
 	import tomllib
-	global ADMIN_IDS
+	global botVars
 	global _TOKEN
 	# Functionality ---------------------------------------
 	with open(_APP_DIR / 'config.toml', mode='rb') as tomlObj:
 		settings = tomllib.load(tomlObj)
-		ADMIN_IDS = settings['ADMIN_IDS']
+		botVars.ADMIN_IDS = settings['ADMIN_IDS']
 		_TOKEN = settings['BALE_BOT_TOKEN']
 
 
@@ -64,9 +46,9 @@ def _LoadDatabase() -> None:
 	"""Loads database."""
 	# Declaring variables ---------------------------------
 	from db.sqlite3 import SqliteDb
-	global db
+	global botVars
 	# Loading database ------------------------------------
-	db = SqliteDb(_APP_DIR / 'db.db3')
+	botVars.db = SqliteDb(_APP_DIR / 'db.db3')
 
 
 def _LoadPagesWizards() -> None:
@@ -74,28 +56,14 @@ def _LoadPagesWizards() -> None:
 	import cmds
 	from importlib import import_module
 	from types import ModuleType
-	global ADMIN_IDS
-	global MIN_USER_LS
-	global db
-	global pUsers
-	global pages
-	global wizards
 	modsDir: Path
 	modNames: list[Path]
 	modName: Path
 	modObj: ModuleType
 	# Loading pages & wizards -----------------------------
 	# Initializing root module of commands package...
-	botVars = {
-		'ADMIN_IDS_': ADMIN_IDS,
-		'db_': db,
-		'pUsers_': pUsers,
-		'pages_': pages,
-		'wizards_': wizards,
-		'MIN_USER_LS_': MIN_USER_LS,}
-	cmds.InitModule(**botVars)
-	pages.update({pg.CMD:pg for pg in cmds.GetPages()})
-	wizards.update({wiz.CMD:wiz for wiz in cmds.GetWizards()})
+	botVars.pages.update({pg.CMD:pg for pg in cmds.GetPages()})
+	botVars.wizards.update({wiz.CMD:wiz for wiz in cmds.GetWizards()})
 	# Initializing & loading the other module of commands package...
 	modsDir = _APP_DIR / 'cmds'
 	modNames = list(modsDir.glob('*.py'))
@@ -107,36 +75,35 @@ def _LoadPagesWizards() -> None:
 	for modName in modNames:
 		try:
 			modObj = import_module(f'cmds.{modName.stem}')
-			modObj.InitModule(**botVars)
 			modPages: tuple[AbsPage, ...] = modObj.GetPages()
 			modWizards: tuple[AbsWizard, ...] = modObj.GetWizards()
-			dPages = {page.cmd:page.callback for page in modPages}
+			dPages = {page.CMD:page for page in modPages}
 			dWizards = {wiz.CMD:wiz for wiz in modWizards}
 		except Exception:
 			logging.error(f'E1-2: {modName.absolute()}')
 			continue
 		# Loading pages...
 		for cmd, cb in dPages.items():
-			if cmd in pages:
-				logging.error(f'E1-10: {cmd}, {pages[cmd].__module__}, '
+			if cmd in botVars.pages:
+				logging.error(f'E1-10: {cmd}, {botVars.pages[cmd].__module__}, '
 					f'{modName.__module__}')
-			elif cmd in wizards:
-				logging.error(f'E1-11: {cmd}, {wizards[cmd].__module__}, '
+			elif cmd in botVars.wizards:
+				logging.error(f'E1-11: {cmd}, {botVars.wizards[cmd].__module__}, '
 					f'{modName.__module__}')
 			else:
-				pages[cmd] = cb
+				botVars.pages[cmd] = cb
 		# Loading wizards...
 		for cmd, wiz in dWizards.items():
-			if cmd in pages:
-				logging.error(f'E1-12: {cmd}, {pages[cmd].__module__}, '
+			if cmd in botVars.pages:
+				logging.error(f'E1-12: {cmd}, {botVars.pages[cmd].__module__}, '
 					f'{modName.__module__}')
-			elif cmd in wizards:
-				logging.error(f'E1-13: {cmd}, {wizards[cmd].__module__}, '
+			elif cmd in botVars.wizards:
+				logging.error(f'E1-13: {cmd}, {botVars.wizards[cmd].__module__}, '
 					f'{modName.__module__}')
 			else:
-				wizards[cmd] = wiz
-		pages.update(dPages)
-		wizards.update(dWizards)
+				botVars.wizards[cmd] = wiz
+		"""pages.update(dPages)
+		wizards.update(dWizards)"""
 
 
 def _InitOtherModules() -> None:
@@ -162,23 +129,23 @@ def _InitOtherModules() -> None:
 async def _DispatchInput(
 		input_: AbsInput,
 		bale_user: User,
-		) -> Coroutine[Any, Any, None]:
+		) -> None:
 	# Declaring variables ---------------------------------
-	global pUsers
+	global botVars
 	userSpace: UserSpace
 	hour: int
 	duration: int
 	# Diaptching ------------------------------------------
-	userSpace = pUsers.GetItemBypass(bale_user.id)
+	userSpace = botVars.pUsers.GetItemBypass(bale_user.id)
 	userSpace.baleUser = bale_user
 	userSpace.dbUser.Frequencies.Increment(input_.bale_msg.date.hour)
 	# Getting the suitable life span for the UserSpace object...
 	hour = input_.bale_msg.date.hour
 	hour = 0 if hour == 23 else (hour + 1)
-	duration = userSpace.SuggestLS(hour, PERCENT_LIFE) + 1
+	duration = userSpace.SuggestLS(hour, botVars.PERCENT_LIFE) + 1
 	logging.debug(f"user with {bale_user.id} ID will be in memory for at "
 		f"least {duration} hour(s).")
-	pUsers.ScheduleDel(bale_user.id, duration * MIN_USER_LS)
+	botVars.pUsers.ScheduleDel(bale_user.id, duration * botVars.MIN_USER_LS)
 	# Digesting the user input...
 	await userSpace.ApendInput(input_)
 
@@ -291,7 +258,6 @@ def BotMain() -> None:
 	_LoadConfig()
 	_LoadDatabase()
 	_LoadPagesWizards()
-	_InitOtherModules()
 	_CreateBot()
 	# Running the bot...
 	try:

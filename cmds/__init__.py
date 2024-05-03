@@ -11,36 +11,10 @@ from bale import Message
 
 from db import ID
 import lang as strs
-from utils.types import AbsWizard, AbsPage, UserPool, UserSpace
+from utils.types import AbsWizard, AbsPage, UserPool, UserSpace, BotVars
 
 
-# ===================================================================
-# Bot-wide variables ================================================
-# ===================================================================
-pUsers: UserPool
-
-pages: dict[str, AbsPage]
-
-wizards: dict[str, AbsWizard]
-
-
-# ===================================================================
-# Functions =========================================================
-# ===================================================================
-def InitModule(
-        *,
-        pages_: dict[str, AbsPage],
-        wizards_: dict[str, AbsWizard],
-        pUsers_: UserPool,
-        **kwargs
-        ) -> None:
-    """Initializes the module.""" 
-    global pages
-    global wizards
-    global pUsers
-    pages = pages_
-    wizards = wizards_
-    pUsers = pUsers_
+botVars = BotVars()
 
 
 def GetPages() -> tuple[AbsPage, ...]:

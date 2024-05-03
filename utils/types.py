@@ -20,38 +20,42 @@ from typing import Any, Coroutine, TypeVar
 
 from bale import Message, User, InlineKeyboardButton, InlineKeyboardMarkup
 
+from . import singleton
 from db import ID, IDatabase, UserData
 import lang as strs
 
 
 # Bot-wide variables ================================================
-pages: dict[str, AbsPage]
-
-wizards: dict[str, AbsWizard]
-
-db: IDatabase
-
-pUsers: UserPool
+botVars: BotVars
 
 
-def InitModule(
-        *,
-        pages_: dict[str, AbsPage],
-        wizards_: dict[str, AbsWizard],
-        db_: IDatabase,
-        pUsers_: UserPool,
-        **kwargs,
-        ) -> None:
-    # Declaring variables ---------------------------------
-    global pages
-    global wizards
-    global db
-    global pUsers
-    # Functoning ------------------------------------------
-    pages = pages_
-    wizards = wizards_
-    db = db_
-    pUsers = pUsers_
+class BotVars(object, metaclass=singleton.SingletonMeta):
+    ADMIN_IDS: tuple[int, ...] = tuple()
+    """A tuple of ID's of admin users."""
+
+    db: IDatabase
+    """The database of the Bot."""
+
+    MIN_USER_LS: int = 3_600
+    """The minimum life span of `UserSpace` objects in seconds."""
+
+    PERCENT_LIFE = 0.05
+    """"""
+
+    pUsers: UserPool
+    """A mapping of `ID -> UserData` contains all information of recent users
+    of the Bot.
+    """
+
+    pages: dict[str, AbsPage] = {}
+
+    wizards: dict[str, AbsWizard] = {}
+
+    def __init__(self) -> None:
+        self.pUsers = UserPool(del_timint=self.MIN_USER_LS)
+
+
+botVars = BotVars()
 
 
 class SDelHooks(enum.IntEnum):
