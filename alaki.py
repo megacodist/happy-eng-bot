@@ -1,28 +1,23 @@
 #
 # 
 #
-
+from abc import ABC, abstractmethod
 from datetime import date, timedelta
+from functools import partial
+from collections.abc import Awaitable, Coroutine
+from typing import Any
 
 
-class Foo(object):
-    def __getitem__(self, __val1, /) -> None:
-        print(__val1,)
+def Foo(a: int, b: int, c: int) -> int:
+    return a + b + c
 
-
-def Baz() -> None:
-    pass
+async def Baz(a: int, b: int, c: int) -> int:
+    return a + b + c
 
 
 def main() -> None:
-    from collections import deque
-    from random import randint, random
-    q = deque()
-    for _ in range(randint(0, 100)):
-        q.append(random())
-    while q:
-        print(q.popleft())
-
+    aaa: Awaitable[int] = Baz(1, 2, 3)
+    bbb: partial[Awaitable[int]] = partial(Baz, 2)
 
 if __name__ == '__main__':
     main()

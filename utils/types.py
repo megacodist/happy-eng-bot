@@ -13,7 +13,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import deque
+from collections.abc import Awaitable
 import enum
+from functools import partial
 from typing import Any, Callable, TypeVar
 import logging
 from typing import Any, Coroutine, TypeVar
@@ -94,10 +96,6 @@ class SDelHooks(enum.IntEnum):
     """
 
 
-_Hashable = TypeVar('_Hashable')
-
-_SDelType = TypeVar('_SDelType')
-
 class SDelPool[_Hashable, _SDelType]:
     """
     ### Deletion-scheduled pool of objects
@@ -155,7 +153,7 @@ class SDelPool[_Hashable, _SDelType]:
     def __delitem__(self, __key: _Hashable, /) -> None:
         self.DelItem(__key)
     
-    def __contains__(self, __key: _Hashable, /) -> None:
+    def __contains__(self, __key: _Hashable, /) -> bool:
         existed = __key in self._items
         if existed:
             self.ScheduleDel(__key)
@@ -293,7 +291,7 @@ class AbsPage(ABC):
 
     @classmethod
     @abstractmethod
-    async def Show(self, bale_id: ID) -> Coroutine[Any, Any, None]:
+    async def Show(cls, bale_id: ID) -> Coroutine[Any, Any, None]:
         pass
 
 
@@ -317,11 +315,11 @@ class AbsWizard(ABC):
         """The ID of the user in the Bale."""
         self._UWID = uw_id
         """The unique ID of this wizard."""
-        self._lastReply: Coroutine[Any, Any, Message] | None = None
+        self._lastReply: partial[Awaitable[Message]] | None = None
         """The last reply of the operation."""
     
-    def __hash__(self) -> str:
-        return self._UWID
+    def __hash__(self) -> int:
+        return int(self._UWID)
 
     def __eq__(self, __obj, /) -> bool:
         if isinstance(__obj, self.__class__):
@@ -334,17 +332,17 @@ class AbsWizard(ABC):
         return self._UWID
     
     @property
-    def LastReply(self) -> Coroutine[Any, Any, Message] | None:
+    def LastReply(self) -> partial[Awaitable[Message]] | None:
         """Gets the last reply of the operation."""
         return self._lastReply
     
     def Reply(
             self,
-            __coro: Coroutine[Any, Any, Message] | None,
+            __coro: Callable[..., Awaitable[Message]] | None,
             /,
             *args,
             **kwargs,
-            ) -> Coroutine[Any, Any, Message] | None:
+            ) -> Awaitable[Message] | None:
         """Saves the last reply and returns it."""
         from functools import partial
         if __coro is None:
@@ -353,7 +351,7 @@ class AbsWizard(ABC):
             self._lastReply = partial(__coro, *args, **kwargs)
         return self.GetLastReply()
     
-    def GetLastReply(self) -> Coroutine[Any, Any, Message] | None:
+    def GetLastReply(self) -> Awaitable[Message] | None:
         if self._lastReply is None:
             return None
         else:
@@ -371,6 +369,7 @@ class AbsWizard(ABC):
         """
         pass
 
+    @abstractmethod
     async def ReplyCallback(self) -> WizardRes:
         """Optionally replies the provided callback. It must return `True`
         if the operation finished otherwise `False`. Callback data are in the
@@ -409,7 +408,7 @@ class AbsInput(ABC):
         self.bale_id = bale_id
     
     @abstractmethod
-    async def Digest(self) -> Coroutine[Any, Any, None]:
+    async def Digest(self) -> None:
         pass
 
 
@@ -423,15 +422,17 @@ class TextInput(AbsInput):
         super().__init__(bale_msg, bale_id)
         self.text = text
     
-    async def Digest(self) -> Coroutine[Any, Any, None]:
-        uSpace = pUsers.GetItemBypass(self.bale_id)
-        if uSpace._wizard:
-            res = await uSpace._wizard.ReplyText()
+    async def Digest(self) -> None:
+        global botVars
+        userSpace = botVars.pUsers.GetItemBypass(self.bale_id)
+        if userSpace._wizard:
+            res = await userSpace._wizard.ReplyText()
             if res.finished:
-                uSpace._wizard = None
-            await uSpace.AppendOutput(res.reply)
+                userSpace._wizard = None
+            if res.reply is not None:
+                await userSpace.AppendOutput(res.reply)
         else:
-            await uSpace.AppendOutput(self.bale_msg.reply(strs.UNEX_DATA))
+            await userSpace.AppendOutput(self.bale_msg.reply(strs.UNEX_DATA))
 
 
 class CbInput(AbsInput):
@@ -447,10 +448,10 @@ class CbInput(AbsInput):
         self.cb = parts[1]
         self.extra = tuple(parts[2:])
     
-    async def Digest(self) -> Coroutine[Any, Any, None]:
-        global pUsers
-        userSpace = pUsers.GetItemBypass(self.bale_id)
-        if (not userSpace._wizard) or (userSpace._wizard.CMD != self.uwid):
+    async def Digest(self) -> None:
+        global botVars
+        userSpace = botVars.pUsers.GetItemBypass(self.bale_id)
+        if userSpace._wizard and (userSpace._wizard.CMD != self.uwid):
             res = await userSpace._wizard.ReplyCallback()
             if res.finished:
                 userSpace._wizard = None
@@ -472,7 +473,7 @@ class CmdInput(AbsInput):
         self.cmd = parts[0].lower()
         self.args = tuple(parts[1:])
     
-    async def Digest(self) -> Coroutine[Any, Any, None]:
+    async def Digest(self) -> Awaitable[None]:
         # DEclaring variables -----------------------------
         global pUsers
         global pages
@@ -507,7 +508,7 @@ class _State(enum.IntEnum):
 
 
 class UserSpace:
-    def __init__(self) -> None:
+    def __init__(self, db_user: UserData) -> None:
         self._inputs: deque[AbsInput] = deque()
         self._outputs: deque[Coroutine[Any, Any, Message]] = deque()
         self._digState = _State.SLEEP
@@ -515,7 +516,7 @@ class UserSpace:
         self._repState = _State.SLEEP
         """The state of replying algorithm."""
         self.baleUser: User | None = None
-        self.dbUser: UserData | None = None
+        self.dbUser = db_user
         """The data of user in the database or `None` if the user has not
         signed in yet.
         """
@@ -529,7 +530,6 @@ class UserSpace:
             await self._Digest()
     
     async def AppendOutput(self, reply: Coroutine[Any, Any, Message]) -> None:
-        import asyncio
         self._outputs.append(reply)
         if self._repState == _State.SLEEP:
             self._repState = _State.PENDING
@@ -571,11 +571,10 @@ class UserSpace:
     
     def _GetCmdReply(self) -> Coroutine[Any, Any, Message] | None:
         # DEclaring variables -----------------------------
-        global pages
-        global wizards
+        global botVars
         # Dispatching command -----------------------------
         try:
-            return pages[self.GetFirstInput().data](self.GetId())
+            return botVars.pages[self.GetFirstInput().data](self.GetId())
         except KeyError:
             try:
                 wizType = wizards[self.GetFirstInput().data]
@@ -593,14 +592,14 @@ class UserSpace:
                     text,
                     components=buttons)
     
-    async def _Digest(self) -> Coroutine[Any, Any, None]:
+    async def _Digest(self) -> None:
         self._digState = _State.RUNNING
         while self._inputs:
             await self.GetFirstInput().Digest()
             self.PopFirstInput()
         self._digState = _State.SLEEP
     
-    async def _Reply(self) -> Coroutine[Any, Any, None]:
+    async def _Reply(self) -> None:
         self._repState = _State.RUNNING
         while self._outputs:
             await self._outputs.popleft()
@@ -625,16 +624,15 @@ class UserPool(SDelPool[ID, UserSpace]):
         """
         return super().GetItemBypass(__key)
     
-    def _Load(self, key: int, err: KeyError) -> UserData:
-        global db
-        userData = db.GetUser(key)
+    def _Load(self, key: int, err: KeyError) -> UserSpace:
+        global botVars
+        userData = botVars.db.GetUser(key)
         if userData is None:
             userData = UserData(key)
-        uSpace = UserSpace()
-        uSpace.dbUser = userData
+        uSpace = UserSpace(userData)
         return uSpace
     
     def _Save(self, key: ID) -> None:
-        global db
-        db.UpsertUser(self.GetItemBypass(key))
+        global botVars
+        botVars.db.UpsertUser(self.GetItemBypass(key).dbUser)
         logging.debug(f'{self._items[key]} saved to the database.')
