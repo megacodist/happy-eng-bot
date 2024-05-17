@@ -16,7 +16,7 @@ from collections import deque
 from collections.abc import Awaitable
 import enum
 from functools import partial
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, Mapping, TypeVar
 import logging
 from typing import Any, Coroutine, TypeVar
 
@@ -52,6 +52,11 @@ class BotVars(object, metaclass=singleton.SingletonMeta):
     pages: dict[str, AbsPage] = {}
 
     wizards: dict[str, AbsWizard] = {}
+
+    localDir: str
+    """The directory of the translated strings in the format of GNU
+    gettext API.
+    """
 
     def __init__(self) -> None:
         self.pUsers = UserPool(del_timint=self.MIN_USER_LS)

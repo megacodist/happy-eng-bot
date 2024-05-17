@@ -8,16 +8,15 @@ from collections.abc import Awaitable, Coroutine
 from typing import Any
 
 
-def Foo(a: int, b: int, c: int) -> int:
-    return a + b + c
-
-async def Baz(a: int, b: int, c: int) -> int:
-    return a + b + c
-
-
 def main() -> None:
-    aaa: Awaitable[int] = Baz(1, 2, 3)
-    bbb: partial[Awaitable[int]] = partial(Baz, 2)
+    import gettext
+    from utils.funcs import Foo
+    Foo('main', 'locales', 'en')
+    print(_('LANG'))
+    print(_('SELECT_LANG'))
+    Foo('alaki', 'locales', 'en')
+    print(_('ALAKI'))
+    
 
 if __name__ == '__main__':
     main()

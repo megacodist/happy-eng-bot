@@ -5,12 +5,11 @@
 from __future__ import annotations
 import logging
 from pathlib import Path
-from typing import Any, Callable, Coroutine
+from typing import TYPE_CHECKING, Callable
 
 from bale import (
     Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment)
 
-from db import IDatabase
 from utils.types import (
 	AbsInput, AbsPage, AbsWizard, CbInput, CmdInput, TextInput,
 	BotVars, UserSpace)
@@ -28,6 +27,11 @@ _happyEngBot: Bot
 
 botVars = BotVars()
 """This data structure consolidate bot-wide variables."""
+
+# Defining the gettext `_` traslator function only to bypass
+# type checkers' errors...
+if TYPE_CHECKING:
+	_: Callable[[str], str] = lambda x: x
 
 
 def _LoadConfig() -> None:
@@ -102,28 +106,13 @@ def _LoadPagesWizards() -> None:
 					f'{modName.__module__}')
 			else:
 				botVars.wizards[cmd] = wiz
-		"""pages.update(dPages)
-		wizards.update(dWizards)"""
 
 
-def _InitOtherModules() -> None:
+def _DoOtherInit() -> None:
 	# Declaring variables ---------------------------------
-	import utils.types
-	global ADMIN_IDS
-	global MIN_USER_LS
-	global db
-	global pUsers
-	global pages
-	global wizards
-	# Functioning -----------------------------------------
-	botVars = {
-		'ADMIN_IDS_': ADMIN_IDS,
-		'db_': db,
-		'pUsers_': pUsers,
-		'pages_':pages,
-		'wizards_': wizards,
-		'MIN_USER_LS_': MIN_USER_LS,}
-	utils.types.InitModule(**botVars)
+	global botVars
+	# Initializing the remaining --------------------------
+	botVars.localDir = 'locales'
 
 
 async def _DispatchInput(
@@ -162,31 +151,37 @@ def _CreateBot() -> None:
 
 	@_happyEngBot.event
 	async def on_ready():
-		logging.debug(f"{_happyEngBot.user.username} is ready to respond!")
+		if _happyEngBot.user is None:
+			logging.error(_('FAILED_LOGGED_IN'))
+		else:
+			logging.debug(_('BOT_READY').format(_happyEngBot.user.username))
 
 	@_happyEngBot.event
 	async def on_message(bale_msg: Message):
 		# Looking for empty or None messages...
 		if not bale_msg.content:
-			logging.warning('an empty or None message')
+			logging.warning(_('EMPTY_MESSAGE'))
+			return
+		if bale_msg.from_user is None:
+			await bale_msg.reply(_('UNKNOWN_USER'))
 			return
 		if bale_msg.content.startswith('/'):
 			await _DispatchInput(
-				CmdInput(bale_msg, bale_msg.from_user.id, bale_msg.text),
+				CmdInput(bale_msg, bale_msg.from_user.id, bale_msg.content),
 				bale_msg.from_user)
 		else:
 			await _DispatchInput(
-				TextInput(bale_msg, bale_msg.from_user.id, bale_msg.text),
+				TextInput(bale_msg, bale_msg.from_user.id, bale_msg.content),
 				bale_msg.from_user,)
 
 	@_happyEngBot.event
 	async def on_message_edit(message: Message) -> None:
-		logging.debug('A message is edited '.ljust(70, '='))
+		logging.debug(_('MESSAGE_EDITED').ljust(70, '='))
 		logging.debug(message)
 
 	@_happyEngBot.event
 	async def on_update(update: Update) -> None:
-		logging.debug('An update is received '.ljust(70, '='))
+		logging.debug(_('UPDATTE_RECEIVED').ljust(70, '='))
 		logging.debug(update)
 
 	@_happyEngBot.event
@@ -258,6 +253,7 @@ def BotMain() -> None:
 	_LoadConfig()
 	_LoadDatabase()
 	_LoadPagesWizards()
+	_DoOtherInit()
 	_CreateBot()
 	# Running the bot...
 	try:

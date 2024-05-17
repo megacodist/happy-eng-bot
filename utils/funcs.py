@@ -26,4 +26,4 @@ def SplitOnDash(__str: str, /) -> tuple[str, str]:
     parts = __str.split('-', 1)
     if len(parts) == 1:
         parts.append('')
-    return tuple(parts)
+    return tuple(parts) # type: ignore
