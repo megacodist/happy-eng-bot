@@ -68,7 +68,7 @@ class HourlyFrequencies:
             f"frequencies={hoursFreqs}>")
     
     def __getitem__(self, __hour: int, /) -> int:
-        self.GetHourFreq(__hour)
+        return self.GetHourFreq(__hour)
     
     def __setitem__(self, __hour: int, __freq: int, /) -> None:
         self.SetHourFreq(__hour, __freq)
@@ -198,7 +198,7 @@ class HourlyFrequencies:
                 self._freqs[idx] = self._freqs[idx] << __n
             self._sum = sum(self._freqs)
     
-    def _GetExtraBits(self, __num: int, /) -> None:
+    def _GetExtraBits(self, __num: int, /) -> int:
         """Returns the number of extra bits of the provided number compared
         to the established length of these frequencies.
         """
@@ -222,6 +222,7 @@ class UserData:
     def __init__(
             self,
             id: ID,
+            lang: str,
             first_name: str | None = None,
             last_name: str | None = None,
             phone: str | None = None,
@@ -229,6 +230,7 @@ class UserData:
             freqs: HourlyFrequencies | None = None,
             ) -> None:
         self._id = id
+        self._lang = lang
         self._firstName = first_name
         self._lastName = last_name
         self._phone = phone
@@ -255,7 +257,7 @@ class UserData:
         return self._id
     
     @property
-    def FirstName(self) -> str:
+    def FirstName(self) -> str | None:
         """Gets or sets the first name of the user."""
         return self._firstName
     
@@ -264,7 +266,7 @@ class UserData:
         self._firstName = __fn
     
     @property
-    def LastName(self) -> str:
+    def LastName(self) -> str | None:
         """Gets or sets the last name of the user."""
         return self._lastName
     
@@ -273,7 +275,7 @@ class UserData:
         self._lastName = __ln
     
     @property
-    def Phone(self) -> str:
+    def Phone(self) -> str | None:
         """Gets or sets the phone number of the user."""
         return self._phone
     
@@ -285,6 +287,15 @@ class UserData:
     def Uwid(self) -> int:
         """Gets the unique ID of the next wizard for this user."""
         return self._uwid
+    
+    @property
+    def Lang(self) -> str:
+        """Gets or sets the prefered language of the user."""
+        return self._lang
+    
+    @Lang.setter
+    def Lang(self, __lang: str, /) -> None:
+        self._lang = __lang
     
     @property
     def Frequencies(self) -> HourlyFrequencies:

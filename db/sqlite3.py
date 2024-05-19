@@ -31,7 +31,7 @@ class SqliteDb(IDatabase):
     def GetUser(self, __id: int) -> UserData | None:
         sql = """
             SELECT
-                user_id, first_name, last_name, phone, uw_id, hourly_freqs
+                user_id, first_name, last_name, phone, lang, uw_id, hourly_freqs
             FROM
                 users
             WHERE
@@ -44,7 +44,14 @@ class SqliteDb(IDatabase):
             return None
         hourlyFreqs = HourlyFrequencies()
         hourlyFreqs.Bytes = res[5]
-        return UserData(res[0], res[1], res[2], res[3], res[4], hourlyFreqs)
+        return UserData(
+            res[0],
+            res[1],
+            res[2],
+            res[3],
+            res[4],
+            res[5],
+            hourlyFreqs)
     
     def UpsertUser(self, user_data: UserData) -> None:
         sql = """
@@ -54,10 +61,11 @@ class SqliteDb(IDatabase):
                     first_name,
                     last_name,
                     phone,
+                    lang,
                     uw_id,
                     hourly_freqs)
             VALUES
-                (?, ?, ?, ?, ?, ?);
+                (?, ?, ?, ?, ?, ?, ?);
         """
         cur = self._conn.cursor()
         cur = cur.execute(
@@ -67,6 +75,7 @@ class SqliteDb(IDatabase):
                 user_data._firstName,
                 user_data._lastName,
                 user_data._phone,
+                user_data._lang,
                 user_data._uwid,
                 user_data._hFreqs.Bytes,
             ))

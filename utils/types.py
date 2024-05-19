@@ -60,8 +60,15 @@ class BotVars(object, metaclass=singleton.SingletonMeta):
     gettext API.
     """
 
+    pDomains: DomainPool
+    """A mapping of `DomainLang -> GNUTranslations` contains all
+    translation objects for all domains and all supported languages of
+    the Bot.
+    """
+
     def __init__(self) -> None:
         self.pUsers = UserPool(del_timint=self.MIN_USER_LS)
+        self.pDomains = DomainPool(del_timint=self.MIN_USER_LS)
 
 
 botVars = BotVars()
@@ -293,12 +300,17 @@ class AbsPage(ABC):
     CMD: str
     """The literal of this command."""
 
-    DESCR: str
-    """The description of the page."""
-
-    @classmethod
     @abstractmethod
-    async def Show(cls, bale_id: ID) -> Coroutine[Any, Any, None]:
+    def __init__(self, bale_id: ID) -> None:
+        self._baleId = bale_id
+
+    @abstractmethod
+    def DESCR(self) -> str:
+        """The description of the page."""
+        pass
+
+    @abstractmethod
+    async def Show(self) -> None:
         pass
 
 
@@ -681,11 +693,9 @@ class DomainPool(SDelPool[DomainLang, gettext.GNUTranslations]):
                 languages=[key.lang,])
         except FileNotFoundError:
             raise err
-        except OSError:
-            logging.info()
+        except OSError as osErr:
+            logging.info('E1-4', stack_info=True, exc_info=True)
             raise err
-        userData = botVars.db.GetUser(key)
-        if userData is None:
-            userData = UserData(key)
-        uSpace = UserSpace(userData)
-        return uSpace
+        else:
+            self._items[key] = gnuTrans
+            return gnuTrans

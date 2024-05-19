@@ -5,13 +5,17 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Coroutine
+from typing import Any, Callable, Coroutine, TYPE_CHECKING
 
 from bale import Message
 
 from db import ID
 import lang as strs
-from utils.types import AbsWizard, AbsPage, UserPool, UserSpace, BotVars
+from utils.types import AbsWizard, AbsPage, DomainLang, UserSpace, BotVars
+
+
+if TYPE_CHECKING:
+    _: Callable[[str], str] = lambda x: x
 
 
 botVars = BotVars()
@@ -30,41 +34,32 @@ def GetWizards() -> tuple[type[AbsWizard], ...]:
 class HelpPage(AbsPage):
     CMD = '/help'
 
-    DESCR = strs.HELP_CMD_INTRO
+    def DESCR(self) -> str:
+        botVars.pDomains.GetItem(
+            DomainLang(
+                botVars.pUsers.GetItemBypass(self._baleId).dbUser.Lang,
+                'cmds')).install()
 
-    @classmethod
-    async def Show(self, bale_id: ID) -> Coroutine[Any, Any, None]:
+    async def Show(self, bale_id: ID) -> None:
         """Gets a list of all available commands."""
         # Declaring variables ---------------------------------
         import lang as strs
         global botVars
         userSpace: UserSpace
         # Functioning -----------------------------------------
-        userSpace = pUsers.GetItemBypass(bale_id)
-        text = strs.HELP_ALL_CMDS
-        if pages:
+        botVars.pDomains.GetItem(
+            DomainLang(
+                botVars.pUsers.GetItemBypass(bale_id).dbUser.Lang,
+                'cmds')).install()
+        userSpace = botVars.pUsers.GetItemBypass(bale_id)
+        text = _('HELP_ALL_CMDS')
+        if botVars.pages:
             text += '\n' + '\n'.join(
-                f'{cmd}\n{pages[cmd].DESCR}\n'
-                for cmd in pages)
-        if wizards:
+                f'{cmd}\n{botVars.pages[cmd].DESCR}\n'
+                for cmd in botVars.pages)
+        if botVars.wizards:
             text += '\n' + '\n'.join(
-                f'{cmd}\n{wizards[cmd].DESCR}\n'
-                for cmd in wizards)
-        return await userSpace.AppendOutput(
+                f'{cmd}\n{botVars.wizards[cmd].DESCR}\n'
+                for cmd in botVars.wizards)
+        await userSpace.AppendOutput(
             userSpace.GetFirstInput().bale_msg.reply(text))
-
-
-def GetHelpPg(id: ID) -> Coroutine[Any, Any, Message]:
-    """Gets a list of all available commands."""
-    # Declaring variables ---------------------------------
-    import lang as strs
-    global pUsers
-    global pages
-    global wizards
-    # Functioning -----------------------------------------
-    text = strs.HELP_ALL_CMDS
-    if pages:
-        text += '\n' + '\n'.join(cmd for cmd in pages)
-    if wizards:
-        text += '\n' + '\n'.join(cmd for cmd in wizards)
-    return pUsers[id].GetFirstInput().bale_msg.reply(text)

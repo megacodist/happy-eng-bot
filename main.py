@@ -79,8 +79,8 @@ def _LoadPagesWizards() -> None:
 	for modName in modNames:
 		try:
 			modObj = import_module(f'cmds.{modName.stem}')
-			modPages: tuple[AbsPage, ...] = modObj.GetPages()
-			modWizards: tuple[AbsWizard, ...] = modObj.GetWizards()
+			modPages: tuple[type[AbsPage], ...] = modObj.GetPages()
+			modWizards: tuple[type[AbsWizard], ...] = modObj.GetWizards()
 			dPages = {page.CMD:page for page in modPages}
 			dWizards = {wiz.CMD:wiz for wiz in modWizards}
 		except Exception:
@@ -125,18 +125,22 @@ async def _DispatchInput(
 	hour: int
 	duration: int
 	# Diaptching ------------------------------------------
-	userSpace = botVars.pUsers.GetItemBypass(bale_user.id)
-	userSpace.baleUser = bale_user
-	userSpace.dbUser.Frequencies.Increment(input_.bale_msg.date.hour)
-	# Getting the suitable life span for the UserSpace object...
-	hour = input_.bale_msg.date.hour
-	hour = 0 if hour == 23 else (hour + 1)
-	duration = userSpace.SuggestLS(hour, botVars.PERCENT_LIFE) + 1
-	logging.debug(f"user with {bale_user.id} ID will be in memory for at "
-		f"least {duration} hour(s).")
-	botVars.pUsers.ScheduleDel(bale_user.id, duration * botVars.MIN_USER_LS)
-	# Digesting the user input...
-	await userSpace.ApendInput(input_)
+	try:
+		userSpace = botVars.pUsers.GetItemBypass(bale_user.id)
+	except KeyError:
+		pass
+	else:
+		userSpace.baleUser = bale_user
+		userSpace.dbUser.Frequencies.Increment(input_.bale_msg.date.hour)
+		# Getting the suitable life span for the UserSpace object...
+		hour = input_.bale_msg.date.hour
+		hour = 0 if hour == 23 else (hour + 1)
+		duration = userSpace.SuggestLS(hour, botVars.PERCENT_LIFE) + 1
+		logging.debug(f"user with {bale_user.id} ID will be in memory for at "
+			f"least {duration} hour(s).")
+		botVars.pUsers.ScheduleDel(bale_user.id, duration * botVars.MIN_USER_LS)
+		# Digesting the user input...
+		await userSpace.ApendInput(input_)
 
 
 def _CreateBot() -> None:
