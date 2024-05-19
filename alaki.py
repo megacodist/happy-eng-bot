@@ -1,21 +1,17 @@
 #
 # 
 #
-from abc import ABC, abstractmethod
-from datetime import date, timedelta
-from functools import partial
-from collections.abc import Awaitable, Coroutine
-from typing import Any
 
 
 def main() -> None:
-    import gettext
-    from utils.funcs import Foo
-    Foo('main', 'locales', 'en')
+    from gettext import translation
+    mainEn = translation('main', 'locales', ['en'])
+    mainEn.install()
     print(_('LANG'))
     print(_('SELECT_LANG'))
-    Foo('alaki', 'locales', 'en')
-    print(_('ALAKI'))
+    mainFr = translation('main', 'locales', ['fr'])
+    mainFr.install()
+    print(_('LANG'))
     
 
 if __name__ == '__main__':

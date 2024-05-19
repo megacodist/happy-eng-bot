@@ -17,12 +17,12 @@ from utils.types import AbsWizard, AbsPage, UserPool, UserSpace, BotVars
 botVars = BotVars()
 
 
-def GetPages() -> tuple[AbsPage, ...]:
+def GetPages() -> tuple[type[AbsPage], ...]:
     """Gets a tuple of all implemented `Page`s in this module."""
     return tuple([HelpPage,])
 
 
-def GetWizards() -> tuple[AbsWizard, ...]:
+def GetWizards() -> tuple[type[AbsWizard], ...]:
     """Gets a tuple of all implemented `Wizard`s in this module."""
     return tuple()
 
@@ -37,9 +37,7 @@ class HelpPage(AbsPage):
         """Gets a list of all available commands."""
         # Declaring variables ---------------------------------
         import lang as strs
-        global pUsers
-        global pages
-        global wizards
+        global botVars
         userSpace: UserSpace
         # Functioning -----------------------------------------
         userSpace = pUsers.GetItemBypass(bale_id)

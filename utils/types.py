@@ -14,8 +14,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import deque
 from collections.abc import Awaitable
+import dataclasses
 import enum
 from functools import partial
+import gettext
 from typing import Any, Callable, Mapping, TypeVar
 import logging
 from typing import Any, Coroutine, TypeVar
@@ -49,9 +51,9 @@ class BotVars(object, metaclass=singleton.SingletonMeta):
     of the Bot.
     """
 
-    pages: dict[str, AbsPage] = {}
+    pages: dict[str, type[AbsPage]] = {}
 
-    wizards: dict[str, AbsWizard] = {}
+    wizards: dict[str, type[AbsWizard]] = {}
 
     localDir: str
     """The directory of the translated strings in the format of GNU
@@ -641,3 +643,49 @@ class UserPool(SDelPool[ID, UserSpace]):
         global botVars
         botVars.db.UpsertUser(self.GetItemBypass(key).dbUser)
         logging.debug(f'{self._items[key]} saved to the database.')
+
+
+class DomainLang:
+    def __init__(self, domain: str, lang: str,) -> None:
+        self.domain = domain
+        self.lang = lang
+    
+    def __hash__(self) -> int:
+        return hash(self.domain + self.lang)
+    
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, self.__class__):
+            return NotImplemented
+        return self.domain == value.domain and self.lang == value.lang
+
+
+class DomainPool(SDelPool[DomainLang, gettext.GNUTranslations]):
+    def __init__(
+            self,
+            *,
+            auto: bool = True,
+            del_timint: ID = 3_600,
+            ) -> None:
+        super().__init__(auto=auto, del_timint=del_timint)
+    
+    def _Load(
+            self,
+            key: DomainLang,
+            err: KeyError,
+            ) -> gettext.GNUTranslations:
+        global botVars
+        try:
+            gnuTrans = gettext.translation(
+                domain=key.domain,
+                localedir=botVars.localDir,
+                languages=[key.lang,])
+        except FileNotFoundError:
+            raise err
+        except OSError:
+            logging.info()
+            raise err
+        userData = botVars.db.GetUser(key)
+        if userData is None:
+            userData = UserData(key)
+        uSpace = UserSpace(userData)
+        return uSpace

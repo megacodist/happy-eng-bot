@@ -25,6 +25,7 @@ msgstr "English"
 msgid "SELECT_LANG"
 msgstr "Select your prefered language:"
 
+# Indicating that `content` attribute of Bale message is `None`...
 #: main.py:174
 msgid "EMPTY_MESSAGE"
 msgstr "No message was received."
@@ -48,3 +49,19 @@ msgstr "A message is edited "
 #: main.py:
 msgid "UPDATTE_RECEIVED"
 msgstr "An update is received "
+
+#: main.py:
+msgid "NO_DATA_CB"
+msgstr "A callback with no data."
+
+#: main.py:
+msgid "USER_JOINED_CHAT"
+msgstr "A user has been added to a chat "
+
+#: main.py:
+msgid "USER_LEFT_CHAT"
+msgstr "A user has left a chat "
+
+#: main.py:
+msgid "SUCCESSFUL_PAYMENT"
+msgstr "A successful payment "

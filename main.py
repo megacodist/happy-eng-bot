@@ -189,8 +189,10 @@ def _CreateBot() -> None:
 		logging.debug('A callback query is created '.ljust(70, '='))
 		logging.debug(bale_cb)
 		# Looking for empty or None messages...
+		if bale_cb.message is None:
+			return
 		if not bale_cb.data:
-			logging.info('A callback with no data.')
+			logging.info(_('NO_DATA_CB'))
 			return
 		if bale_cb.data.startswith('/'):
 			await _DispatchInput(
@@ -207,7 +209,7 @@ def _CreateBot() -> None:
 			chat: Chat,
 			user: User
 			) -> None:
-		logging.debug('A user has been added to a chat '.ljust(70, '='))
+		logging.debug(_('USER_JOINED_CHAT').ljust(70, '='))
 		logging.debug(message)
 		logging.debug(chat)
 		logging.debug(user)
@@ -218,7 +220,7 @@ def _CreateBot() -> None:
 			chat: Chat,
 			user: User
 			) -> None:
-		logging.debug('A user has left a chat '.ljust(70, '='))
+		logging.debug(_('USER_LEFT_CHAT').ljust(70, '='))
 		logging.debug(message)
 		logging.debug(chat)
 		logging.debug(user)
@@ -227,7 +229,7 @@ def _CreateBot() -> None:
 	async def on_successful_payment(
 			payment: SuccessfulPayment,
 			) -> None:
-		logging.debug('A successful payment '.ljust(70, '='))
+		logging.debug(_('SUCCESSFUL_PAYMENT').ljust(70, '='))
 		logging.debug(payment)
 
 
@@ -246,8 +248,7 @@ def BotMain() -> None:
 	import asyncio
 	from logger import ConfigureLogging
 	global _happyEngBot
-	global pUsers
-	global db
+	global botVars
 	# Starting point --------------------------------------
 	ConfigureLogging(_APP_DIR / 'log.log')
 	_LoadConfig()
@@ -263,8 +264,8 @@ def BotMain() -> None:
 	except SystemExit:
 		asyncio.create_task(_happyEngBot.close())
 	finally:
-		pUsers.Clear()
-		db.Close()
+		botVars.pUsers.Clear()
+		botVars.db.Close()
 
 
 if __name__ == '__main__':
