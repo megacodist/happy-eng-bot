@@ -17,6 +17,29 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: main.py:
+#: types.py:
+msgid "UNEX_CMD"
+msgstr "Unrecognized command: {}"
+
+#: types.py:
+msgid "UNEX_DATA"
+msgstr "You are not allowed to enter text. If you were at the middle of a wizard, repeat it again."
+
+#: types.py:
+msgid "EXPIRED_CB"
+msgstr "The wizard related to this button is expired."
+
+#: types.py:
+msgid "HELP"
+msgstr "Help"
+
+#: cmds/__init__.py:
 msgid "HELP_ALL_CMDS"
 msgstr "List of all commands:"
+
+#: cmds/__init__.py:
+msgid "HELP_CMD_DESCR"
+msgstr "Displays this page."
+
+msgid "LANG_CMD_DESCR"
+msgstr "A wizard to select from all supported languages."

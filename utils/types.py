@@ -18,7 +18,7 @@ import dataclasses
 import enum
 from functools import partial
 import gettext
-from typing import Any, Callable, Mapping, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Mapping, TypeVar
 import logging
 from typing import Any, Coroutine, TypeVar
 
@@ -27,6 +27,10 @@ from bale import Message, User, InlineKeyboardButton, InlineKeyboardMarkup
 from . import singleton
 from db import ID, IDatabase, UserData
 import lang as strs
+
+
+if TYPE_CHECKING:
+    _: Callable[[str], str] = lambda x: x
 
 
 # Bot-wide variables ================================================
@@ -155,7 +159,7 @@ class SDelPool[_Hashable, _SDelType]:
         self.DEL_TIMINT = del_timint
         """The time interval for deletion in seconds."""
         self._items: dict[_Hashable, _SDelType] = {}
-        self._timers: dict[_Hashable, TimerHandle] = {}
+        self._timers: dict[_Hashable, TimerHandle | None] = {}
         self._hooks: dict[SDelHooks, Callable[[_Hashable], None]] = {}
     
     def __getitem__(self, __key: _Hashable, /) -> _SDelType:
@@ -274,7 +278,7 @@ class SDelPool[_Hashable, _SDelType]:
         """Unschedules a key for deletion. If it has not scheduled, it
         has no eefect.
         """
-        if key in self._timers:
+        if (key in self._timers) and (self._timers[key] is not None):
             self._timers[key].cancel()
             if not self._timers[key].cancelled():
                 logging.fatal('E1-1', exc_info=True)
@@ -289,7 +293,7 @@ class SDelPool[_Hashable, _SDelType]:
 class WizardRes:
     def __init__(
             self,
-            reply: Coroutine[Any, Any, Message] | None,
+            reply: Awaitable[Message] | None,
             finished: bool,
             ) -> None:
         self.reply = reply
@@ -300,17 +304,15 @@ class AbsPage(ABC):
     CMD: str
     """The literal of this command."""
 
+    @classmethod
     @abstractmethod
-    def __init__(self, bale_id: ID) -> None:
-        self._baleId = bale_id
-
-    @abstractmethod
-    def DESCR(self) -> str:
-        """The description of the page."""
+    def GetDescr(cls, lang: str) -> str:
+        """Gets the description of the page."""
         pass
 
+    @classmethod
     @abstractmethod
-    async def Show(self) -> None:
+    async def Show(cls, bale_id: ID) -> None:
         pass
 
 
@@ -451,7 +453,10 @@ class TextInput(AbsInput):
             if res.reply is not None:
                 await userSpace.AppendOutput(res.reply)
         else:
-            await userSpace.AppendOutput(self.bale_msg.reply(strs.UNEX_DATA))
+            gnuTrans = botVars.pDomains.GetItem(
+                DomainLang('cmds', userSpace.dbUser.Lang))
+            _ = gnuTrans.gettext
+            await userSpace.AppendOutput(self.bale_msg.reply(_('UNEX_DATA')))
 
 
 class CbInput(AbsInput):
@@ -470,14 +475,17 @@ class CbInput(AbsInput):
     async def Digest(self) -> None:
         global botVars
         userSpace = botVars.pUsers.GetItemBypass(self.bale_id)
-        if userSpace._wizard and (userSpace._wizard.CMD != self.uwid):
+        if userSpace._wizard and (userSpace._wizard.Uwid == self.uwid):
             res = await userSpace._wizard.ReplyCallback()
             if res.finished:
                 userSpace._wizard = None
-            if res.reply:
+            if res.reply is not None:
                 await userSpace.AppendOutput(res.reply)
         else:
-            await userSpace.AppendOutput(self.bale_msg.reply(strs.EXPIRED_CB))
+            gnuTrans = botVars.pDomains.GetItem(
+                DomainLang('cmds', userSpace.dbUser.Lang))
+            _ = gnuTrans.gettext
+            await userSpace.AppendOutput(self.bale_msg.reply(_('EXPIRED_CB')))
 
 
 class CmdInput(AbsInput):
@@ -492,32 +500,37 @@ class CmdInput(AbsInput):
         self.cmd = parts[0].lower()
         self.args = tuple(parts[1:])
     
-    async def Digest(self) -> Awaitable[None]:
+    async def Digest(self) -> None:
         # DEclaring variables -----------------------------
-        global pUsers
-        global pages
-        global wizards
+        global botVars
         # Dispatching command -----------------------------
         try:
-            pageType = pages[self.cmd]
-            return await pageType.Show(self.bale_id)
+            pageType = botVars.pages[self.cmd]
+            await pageType.Show(self.bale_id)
         except KeyError:
+            userSpace = botVars.pUsers.GetItemBypass(self.bale_id)
             try:
-                wizType = wizards[self.cmd]
-                userSpace = pUsers.GetItemBypass(self.bale_id)
+                wizType = botVars.wizards[self.cmd]
                 userSpace._wizard = wizType(
                     self.bale_id,
-                    userSpace.dbUser.GetIncUwid())
-                return await userSpace._wizard.Start()
+                    str(userSpace.dbUser.GetIncUwid()))
+                res = await userSpace._wizard.Start()
+                if res.finished:
+                    userSpace._wizard = None
+                if res.reply is not None:
+                    await userSpace.AppendOutput(res.reply)
             except KeyError:
+                gnuTrans = botVars.pDomains.GetItem(
+                    DomainLang('cmds', userSpace.dbUser.Lang))
+                _ = gnuTrans.gettext
                 buttons = InlineKeyboardMarkup()
                 buttons.add(InlineKeyboardButton(
-                    strs.HELP,
+                    _('HELP'),
                     callback_data='/help'))
-                text = strs.UNEX_CMD.format(self.cmd)
-                return await self.bale_msg.reply(
+                text = _('UNEX_CMD').format(self.cmd)
+                await userSpace.AppendOutput(self.bale_msg.reply(
                     text,
-                    components=buttons)
+                    components=buttons))
 
 
 class _State(enum.IntEnum):
@@ -529,16 +542,14 @@ class _State(enum.IntEnum):
 class UserSpace:
     def __init__(self, db_user: UserData) -> None:
         self._inputs: deque[AbsInput] = deque()
-        self._outputs: deque[Coroutine[Any, Any, Message]] = deque()
+        self._outputs: deque[Awaitable[Message]] = deque()
         self._digState = _State.SLEEP
         """The state of digestive algorithm."""
         self._repState = _State.SLEEP
         """The state of replying algorithm."""
         self.baleUser: User | None = None
         self.dbUser = db_user
-        """The data of user in the database or `None` if the user has not
-        signed in yet.
-        """
+        """The data of user in the database."""
         self._wizard: AbsWizard | None = None
         """The ongoing wizard."""
     
@@ -547,8 +558,8 @@ class UserSpace:
         if self._digState == _State.SLEEP:
             self._digState = _State.PENDING
             await self._Digest()
-    
-    async def AppendOutput(self, reply: Coroutine[Any, Any, Message]) -> None:
+
+    async def AppendOutput(self, reply: Awaitable[Message]) -> None:
         self._outputs.append(reply)
         if self._repState == _State.SLEEP:
             self._repState = _State.PENDING
@@ -559,7 +570,7 @@ class UserSpace:
         return len(self._inputs)
     
     def GetId(self) -> ID:
-        return self.baleUser.id
+        return self.baleUser.id # type: ignore
     
     def GetFirstInput(self) -> AbsInput:
         """Gets first input from the queue without poping it. It raises
@@ -587,29 +598,6 @@ class UserSpace:
             else:
                 break
         return duration
-    
-    def _GetCmdReply(self) -> Coroutine[Any, Any, Message] | None:
-        # DEclaring variables -----------------------------
-        global botVars
-        # Dispatching command -----------------------------
-        try:
-            return botVars.pages[self.GetFirstInput().data](self.GetId())
-        except KeyError:
-            try:
-                wizType = wizards[self.GetFirstInput().data]
-                self._wizard = wizType(
-                    self.GetId(),
-                    self.dbUser.GetIncUwid())
-                return self._wizard.Start()
-            except KeyError:
-                buttons = InlineKeyboardMarkup()
-                buttons.add(InlineKeyboardButton(
-                    strs.HELP,
-                    callback_data='/help'))
-                text = strs.UNEX_CMD.format(self.GetFirstInput().data)
-                return self.GetFirstInput().bale_msg.reply(
-                    text,
-                    components=buttons)
     
     async def _Digest(self) -> None:
         self._digState = _State.RUNNING
