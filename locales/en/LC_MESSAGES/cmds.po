@@ -25,6 +25,14 @@ msgstr "Unrecognized command: {}"
 msgid "UNEX_DATA"
 msgstr "You are not allowed to enter text. If you were at the middle of a wizard, repeat it again."
 
+#
+msgid "RESTART"
+msgstr "Restart"
+
+#
+msgid "CONFIRM"
+msgstr "Confirm"
+
 #: types.py:
 msgid "EXPIRED_CB"
 msgstr "The wizard related to this button is expired."

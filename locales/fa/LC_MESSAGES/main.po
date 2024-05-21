@@ -12,21 +12,21 @@ msgstr ""
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: en\n"
+"Language: fa\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #: main.py:
 msgid "LANG"
-msgstr "English"
+msgstr "فارسی"
 
 #: main.py:
 msgid "SELECT_LANG"
-msgstr "Select your prefered language:"
+msgstr "زبان مورد نظر خود را انتخاب کنید:"
 
 msgid "ERROR"
-msgstr "An error occurred:\n{}"
+msgstr "خطایی رخ داده است:\n{}"
 
 # Indicating that `content` attribute of Bale message is `None`...
 #: main.py:174
@@ -51,20 +51,20 @@ msgstr "A message is edited "
 
 #: main.py:
 msgid "UPDATTE_RECEIVED"
-msgstr "An update is received "
+msgstr "یک به روزرسانی دریافت شد "
 
 #: main.py:
 msgid "NO_DATA_CB"
-msgstr "A callback with no data."
+msgstr "ارجاعی بدون داده"
 
 #: main.py:
 msgid "USER_JOINED_CHAT"
-msgstr "A user has been added to a chat "
+msgstr "یک کاربر به گفتگویی اضافه شد "
 
 #: main.py:
 msgid "USER_LEFT_CHAT"
-msgstr "A user has left a chat "
+msgstr "یک کاربر گفتگویی را ترک کرد "
 
 #: main.py:
 msgid "SUCCESSFUL_PAYMENT"
-msgstr "A successful payment "
+msgstr "پرداختی موفق "

@@ -3,6 +3,7 @@
 #
 
 from __future__ import annotations
+import gettext
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
@@ -10,6 +11,7 @@ from typing import TYPE_CHECKING, Callable
 from bale import (
     Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment)
 
+from db import UserData
 from utils.types import (
 	AbsInput, AbsPage, AbsWizard, CbInput, CmdInput, TextInput,
 	BotVars, UserSpace)
@@ -28,10 +30,8 @@ _happyEngBot: Bot
 botVars = BotVars()
 """This data structure consolidate bot-wide variables."""
 
-# Defining the gettext `_` traslator function only to bypass
-# type checkers' errors...
-if TYPE_CHECKING:
-	_: Callable[[str], str] = lambda x: x
+_: Callable[[str], str]
+"""The `gettext` translator function."""
 
 
 def _LoadConfig() -> None:
@@ -84,7 +84,7 @@ def _LoadPagesWizards() -> None:
 			dPages = {page.CMD:page for page in modPages}
 			dWizards = {wiz.CMD:wiz for wiz in modWizards}
 		except Exception:
-			logging.error(f'E1-2: {modName.absolute()}')
+			logging.error(f'E1-2: {(modsDir /modName)}')
 			continue
 		# Loading pages...
 		for cmd, cb in dPages.items():
@@ -111,8 +111,14 @@ def _LoadPagesWizards() -> None:
 def _DoOtherInit() -> None:
 	# Declaring variables ---------------------------------
 	global botVars
+	global _
 	# Initializing the remaining --------------------------
 	botVars.localDir = 'locales'
+	botLang = gettext.translation(
+		domain='main',
+		localedir=botVars.localDir,
+		languages=['en',],)
+	_ = botLang.gettext
 
 
 async def _DispatchInput(
@@ -120,6 +126,7 @@ async def _DispatchInput(
 		bale_user: User,
 		) -> None:
 	# Declaring variables ---------------------------------
+	from cmds import LangSelectPage
 	global botVars
 	userSpace: UserSpace
 	hour: int
@@ -128,7 +135,16 @@ async def _DispatchInput(
 	try:
 		userSpace = botVars.pUsers.GetItemBypass(bale_user.id)
 	except KeyError:
-		pass
+		if isinstance(input_, CbInput):
+			# Creating the new user based on the language...
+			userData = UserData(bale_user.id, input_.cb)
+			userSpace = UserSpace(userData)
+			botVars.pUsers.SetItemBypass(bale_user.id, userSpace)
+			# Showing available commands to the newcomer...
+			await userSpace.ApendInput(
+				CmdInput(input_.bale_msg, bale_user.id, '/help'))
+		else:
+			await LangSelectPage(input_.bale_msg)
 	else:
 		userSpace.baleUser = bale_user
 		userSpace.dbUser.Frequencies.Increment(input_.bale_msg.date.hour)
@@ -145,9 +161,11 @@ async def _DispatchInput(
 
 def _CreateBot() -> None:
 	# Declaring of variables ------------------------------
+	global botVars
 	global _happyEngBot
 	# Functionality ---------------------------------------
 	_happyEngBot = Bot(token=_TOKEN)
+	botVars.bot = _happyEngBot
 
 	@_happyEngBot.event
 	async def on_before_ready() -> None:

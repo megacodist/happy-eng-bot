@@ -2,6 +2,8 @@
 # 
 #
 
+from dbm import gnu
+import gettext
 import logging
 from typing import Any, Callable, Coroutine
 
@@ -10,19 +12,20 @@ from bale import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from db import UserData
 import lang as strs
 import lang.cmds.basic as basic_strs
-from utils.types import AbsWizard, ID, AbsPage, BotVars, WizardRes
+from utils.types import (
+    AbsPage, AbsWizard, DomainLang, BotVars, ID, UserSpace, WizardRes)
 
 
 # Bot-wide variables ================================================
 botVars = BotVars()
 
 
-def GetPages() -> tuple[AbsPage, ...]:
+def GetPages() -> tuple[type[AbsPage], ...]:
     """Gets a tuple of all implemented `Page`s in this module."""
     return tuple()
 
 
-def GetWizards() -> tuple[AbsWizard, ...]:
+def GetWizards() -> tuple[type[AbsWizard], ...]:
     """Gets a tuple of all implemented `Wizard`s in this module."""
     return tuple([SigninWiz,])
 
@@ -39,7 +42,14 @@ class SigninWiz(AbsWizard):
 
     _RESTART_CBD = '11'
 
-    def __init__(self, bale_id: ID, uwid: int) -> None:
+    @classmethod
+    def GetDescr(cls, lang: str) -> str:
+        global botVars
+        cmdsTrans = botVars.pDomains.GetItem(DomainLang(lang, 'cmds_basic'))
+        _ = cmdsTrans.gettext
+        return _('SIGNIN_CMD_DESCR')
+
+    def __init__(self, bale_id: ID, uwid: str) -> None:
         """Initializes a new instance of the sign-in operation with the
         Bale ID of the user.
         """
@@ -51,16 +61,17 @@ class SigninWiz(AbsWizard):
         self._phone: str | None = None
 
     async def Start(self) -> Coroutine[Any, Any, Message]:
-        global pUsers
-        userSpace = pUsers.GetItemBypass(self._baleId)
+        global botVars
+        userSpace = botVars.pUsers.GetItemBypass(self._baleId)
         self._firstName = userSpace.dbUser._firstName
         self._lastName = userSpace.dbUser._lastName
         self._phone = userSpace.dbUser._phone
         if self._firstName and self._lastName and self._phone:
-            return await self._Confirm()
-        return self.Reply(
-            pUsers[self._baleId].GetFirstInput().bale_msg.reply,
-            basic_strs.SIGN_IN_ENTER_FIRST_NAME)
+            await self._Confirm()
+        else:
+            return self.Reply(
+                pUsers[self._baleId].GetFirstInput().bale_msg.reply,
+                basic_strs.SIGN_IN_ENTER_FIRST_NAME)
 
     async def ReplyText(self) -> WizardRes:
         """Gets from user and fills folowing items in consecutive calls:
@@ -117,10 +128,13 @@ class SigninWiz(AbsWizard):
             return WizardRes(None, False,)
 
     async def ReplyCallback(self) -> WizardRes:
+        # Declaring variables -----------------------------
         from utils.types import CbInput
-        global pUsers
-        userSpace = pUsers.GetItemBypass(self._baleId)
-        input_: CbInput = userSpace.GetFirstInput()
+        global botVars
+        gnuTrans: gettext.GNUTranslations
+        #  -------------------------
+        userSpace = botVars.pUsers.GetItemBypass(self._baleId)
+        input_: CbInput = userSpace.GetFirstInput() # type: ignore
         match input_.cb:
             case self._CONFIRM_CBD:
                 userSpace.dbUser = UserData(
@@ -140,18 +154,26 @@ class SigninWiz(AbsWizard):
                 return WizardRes(None, False,)
     
     async def _Confirm(self) -> WizardRes:
-        global pUsers
+        # Declaring variables -----------------------------
+        global botVars
+        gnuTrans: gettext.GNUTranslations
+        userSpace: UserSpace
+        # Asking for confirmation -------------------------
+        userSpace = botVars.pUsers.GetItemBypass(self._baleId)
+        gnuTrans = botVars.pDomains.GetItem(
+            DomainLang('cmds_basic', userSpace.dbUser.Lang))
+        _ = gnuTrans.gettext
         pair = '{}: {}'
-        text = strs.CONFIRM_DATA
-        text += '\n' + pair.format(basic_strs.FIRST_NAME, self._firstName)
-        text += '\n' + pair.format(basic_strs.LAST_NAME, self._lastName)
-        text += '\n' + pair.format(basic_strs.PHONE, self._phone)
+        text = _('ASK_CONFIRMATION')
+        text += '\n' + pair.format(_('FIRST_NAME'), self._firstName)
+        text += '\n' + pair.format(_('LAST_NAME'), self._lastName)
+        text += '\n' + pair.format(_('PHONE'), self._phone)
         buttons = InlineKeyboardMarkup()
         buttons.add(self._GetConfirmBtn())
         buttons.add(self._GetRestartBtn())
         return WizardRes(
             self.Reply(
-                pUsers.GetItemBypass(
+                botVars.pUsers.GetItemBypass(
                     self._baleId).GetFirstInput().bale_msg.reply,
                 text,
                 components=buttons,),
@@ -159,11 +181,21 @@ class SigninWiz(AbsWizard):
     
     def _GetRestartBtn(self) -> InlineKeyboardButton:
         """Gets 'Restart' button."""
+        global botVars
+        gnuTrans = botVars.pDomains.GetItem(DomainLang(
+            'cmds',
+            botVars.pUsers.GetItemBypass(self._baleId).dbUser.Lang))
+        _ = gnuTrans.gettext
         return InlineKeyboardButton(
-            strs.RESTART,
+            _('RESTART'),
             callback_data=f'{self.Uwid}-{self._RESTART_CBD}')
 
     def _GetConfirmBtn(self) -> InlineKeyboardButton:
+        global botVars
+        gnuTrans = botVars.pDomains.GetItem(DomainLang(
+            'cmds',
+            botVars.pUsers.GetItemBypass(self._baleId).dbUser.Lang))
+        _ = gnuTrans.gettext
         return InlineKeyboardButton(
-            strs.CONFIRM,
+            _('CONFIRM'),
             callback_data=f'{self.Uwid}-{self._CONFIRM_CBD}')

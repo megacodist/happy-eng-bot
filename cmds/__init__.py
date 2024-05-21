@@ -6,7 +6,8 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import gettext
-from typing import Any, Callable, Coroutine, TYPE_CHECKING
+import logging
+from typing import Awaitable
 
 from bale import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -48,7 +49,7 @@ class HelpPage(AbsPage):
         # Functioning -----------------------------------------
         userSpace = botVars.pUsers.GetItemBypass(bale_id)
         cmdsTrans = botVars.pDomains.GetItem(
-            DomainLang(userSpace.dbUser.Lang, 'cmds'))
+            DomainLang('cmds', userSpace.dbUser.Lang))
         text = cmdsTrans.gettext('HELP_ALL_CMDS')
         if botVars.pages:
             text += '\n' + '\n'.join(
@@ -57,34 +58,39 @@ class HelpPage(AbsPage):
                 for cmd in botVars.pages)
         if botVars.wizards:
             text += '\n' + '\n'.join(
-                f'{cmd}\n{botVars.wizards[cmd].DESCR}\n'
+                f'{cmd}\n{botVars.wizards[cmd].GetDescr(
+                    userSpace.dbUser.Lang)}\n'
                 for cmd in botVars.wizards)
         await userSpace.AppendOutput(
             userSpace.GetFirstInput().bale_msg.reply(text))
 
 
-class LangSelectPage(AbsPage):
-    CMD = '/lang'
-
-    @classmethod
-    def GetDescr(cls, lang: str) -> str:
-        global botVars
-        cmdsTrans = botVars.pDomains.GetItem(DomainLang(lang, 'cmds'))
-        _ = cmdsTrans.gettext
-        return _('LANG_CMD_DESCR')
-    
-    @classmethod
-    async def Show(cls, bale_id: ID) -> None:
-        from pathlib import Path
-        global botVars
-        text = ''
-        buttons = InlineKeyboardMarkup()
-        for item in Path(botVars.localDir).iterdir():
-            if item.is_dir():
-                gnuTrans = botVars.pDomains.GetItem(
-                    DomainLang('main', item.name))
-                _ = gnuTrans.gettext
-                text += _('SELECT_LANG')
-                buttons.add(InlineKeyboardButton(
+def LangSelectPage(bale_msg: Message) -> Awaitable[Message]:
+    """Asks for prefered language available."""
+    from pathlib import Path
+    global botVars
+    texts = list[str]()
+    buttons = InlineKeyboardMarkup()
+    row = 1
+    for item in Path(botVars.localDir).iterdir():
+        if item.is_dir():
+            gnuTrans = gettext.translation(
+                domain='main',
+                localedir=botVars.localDir,
+                languages=[item.name])
+            _ = gnuTrans.gettext
+            texts.append(_('SELECT_LANG'))
+            buttons.add(
+                InlineKeyboardButton(
                     _('LANG'),
-                    callback_data=f'0-{item.name}'))
+                    callback_data=f'0-{item.name}'),
+                row,)
+            row += 1
+    if texts:
+        return botVars.bot.send_message(
+            bale_msg.chat_id, # type: ignore
+            '\n'.join(texts),
+            components=buttons)
+    else:
+        logging.error('E7')
+        return bale_msg.reply('An error occurred:\nE7')

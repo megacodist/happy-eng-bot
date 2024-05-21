@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any, Callable, Mapping, TypeVar
 import logging
 from typing import Any, Coroutine, TypeVar
 
-from bale import Message, User, InlineKeyboardButton, InlineKeyboardMarkup
+from bale import Bot, Message, User, InlineKeyboardButton, InlineKeyboardMarkup
 
 from . import singleton
 from db import ID, IDatabase, UserData
@@ -31,51 +31,6 @@ import lang as strs
 
 if TYPE_CHECKING:
     _: Callable[[str], str] = lambda x: x
-
-
-# Bot-wide variables ================================================
-botVars: BotVars
-
-
-class BotVars(object, metaclass=singleton.SingletonMeta):
-    ADMIN_IDS: tuple[int, ...] = tuple()
-    """A tuple of ID's of admin users."""
-
-    db: IDatabase
-    """The database of the Bot."""
-
-    MIN_USER_LS: int = 3_600
-    """The minimum life span of `UserSpace` objects in seconds."""
-
-    PERCENT_LIFE = 0.05
-    """"""
-
-    pUsers: UserPool
-    """A mapping of `ID -> UserData` contains all information of recent users
-    of the Bot.
-    """
-
-    pages: dict[str, type[AbsPage]] = {}
-
-    wizards: dict[str, type[AbsWizard]] = {}
-
-    localDir: str
-    """The directory of the translated strings in the format of GNU
-    gettext API.
-    """
-
-    pDomains: DomainPool
-    """A mapping of `DomainLang -> GNUTranslations` contains all
-    translation objects for all domains and all supported languages of
-    the Bot.
-    """
-
-    def __init__(self) -> None:
-        self.pUsers = UserPool(del_timint=self.MIN_USER_LS)
-        self.pDomains = DomainPool(del_timint=self.MIN_USER_LS)
-
-
-botVars = BotVars()
 
 
 class SDelHooks(enum.IntEnum):
@@ -279,8 +234,8 @@ class SDelPool[_Hashable, _SDelType]:
         has no eefect.
         """
         if (key in self._timers) and (self._timers[key] is not None):
-            self._timers[key].cancel()
-            if not self._timers[key].cancelled():
+            self._timers[key].cancel() # type: ignore
+            if not self._timers[key].cancelled(): # type: ignore
                 logging.fatal('E1-1', exc_info=True)
             self._timers[key] = None
     
@@ -328,8 +283,11 @@ class AbsWizard(ABC):
     CMD: str
     """The literal of this command."""
 
-    DESCR: str
-    """The description of the page."""
+    @classmethod
+    @abstractmethod
+    def GetDescr(cls, lang: str) -> str:
+        """Gets the description of the wizard."""
+        pass
     
     def __init__(self, bale_id: ID, uw_id: str) -> None:
         self._baleId = bale_id
@@ -621,7 +579,7 @@ class UserPool(SDelPool[ID, UserSpace]):
             ) -> None:
         super().__init__(del_timint=del_timint)
         self._hooks[SDelHooks.BEFORE_DELETION] = self._Save
-        self._hooks[SDelHooks.ACCESS_KEY_ERROR] = self._Load
+        #self._hooks[SDelHooks.ACCESS_KEY_ERROR] = self._Load
     
     def GetItemBypass(self, __key: ID) -> UserSpace:
         """Gets the `UserSpace` object associated with the key. If the
@@ -631,13 +589,13 @@ class UserPool(SDelPool[ID, UserSpace]):
         """
         return super().GetItemBypass(__key)
     
-    def _Load(self, key: int, err: KeyError) -> UserSpace:
+    """def _Load(self, key: int, err: KeyError) -> UserSpace:
         global botVars
         userData = botVars.db.GetUser(key)
         if userData is None:
             userData = UserData(key)
         uSpace = UserSpace(userData)
-        return uSpace
+        return uSpace"""
     
     def _Save(self, key: ID) -> None:
         global botVars
@@ -657,6 +615,10 @@ class DomainLang:
         if not isinstance(value, self.__class__):
             return NotImplemented
         return self.domain == value.domain and self.lang == value.lang
+    
+    def __repr__(self) -> str:
+        return f"<{self.__qualname__} domain='{self.domain}' \
+            lang=''{self.lang}>"
 
 
 class DomainPool(SDelPool[DomainLang, gettext.GNUTranslations]):
@@ -667,6 +629,7 @@ class DomainPool(SDelPool[DomainLang, gettext.GNUTranslations]):
             del_timint: ID = 3_600,
             ) -> None:
         super().__init__(auto=auto, del_timint=del_timint)
+        self._hooks[SDelHooks.ACCESS_KEY_ERROR] = self._Load
     
     def _Load(
             self,
@@ -687,3 +650,46 @@ class DomainPool(SDelPool[DomainLang, gettext.GNUTranslations]):
         else:
             self._items[key] = gnuTrans
             return gnuTrans
+
+
+class BotVars(object, metaclass=singleton.SingletonMeta):
+    ADMIN_IDS: tuple[int, ...] = tuple()
+    """A tuple of ID's of admin users."""
+
+    bot: Bot
+
+    db: IDatabase
+    """The database of the Bot."""
+
+    MIN_USER_LS: int = 3_600
+    """The minimum life span of `UserSpace` objects in seconds."""
+
+    PERCENT_LIFE = 0.05
+    """"""
+
+    pUsers: UserPool
+    """A mapping of `ID -> UserData` contains all information of recent users
+    of the Bot.
+    """
+
+    pages: dict[str, type[AbsPage]] = {}
+
+    wizards: dict[str, type[AbsWizard]] = {}
+
+    localDir: str
+    """The directory of the translated strings in the format of GNU
+    gettext API.
+    """
+
+    pDomains: DomainPool
+    """A mapping of `DomainLang -> GNUTranslations` contains all
+    translation objects for all domains and all supported languages of
+    the Bot.
+    """
+
+    def __init__(self) -> None:
+        self.pUsers = UserPool(del_timint=self.MIN_USER_LS)
+        self.pDomains = DomainPool(del_timint=self.MIN_USER_LS)
+
+
+botVars = BotVars()
