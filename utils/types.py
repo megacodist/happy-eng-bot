@@ -14,19 +14,16 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import deque
 from collections.abc import Awaitable
-import dataclasses
 import enum
 from functools import partial
 import gettext
-from typing import TYPE_CHECKING, Any, Callable, Mapping, TypeVar
+from typing import TYPE_CHECKING, Callable
 import logging
-from typing import Any, Coroutine, TypeVar
 
 from bale import Bot, Message, User, InlineKeyboardButton, InlineKeyboardMarkup
 
 from . import singleton
 from db import ID, IDatabase, UserData
-import lang as strs
 
 
 if TYPE_CHECKING:
@@ -400,6 +397,7 @@ class TextInput(AbsInput):
             ) -> None:
         super().__init__(bale_msg, bale_id)
         self.text = text
+        """The text that user typed into the Bot."""
     
     async def Digest(self) -> None:
         global botVars
@@ -511,6 +509,11 @@ class UserSpace:
         self._wizard: AbsWizard | None = None
         """The ongoing wizard."""
     
+    def __repr__(self) -> str:
+        return (f'<{self.__class__.__qualname__}'
+            f' bale-id={self.baleUser.id}' # type: ignore
+            f' bale-username={self.baleUser.username}>') # type: ignore
+    
     async def ApendInput(self, input_: AbsInput) -> None:
         self._inputs.append(input_)
         if self._digState == _State.SLEEP:
@@ -579,7 +582,7 @@ class UserPool(SDelPool[ID, UserSpace]):
             ) -> None:
         super().__init__(del_timint=del_timint)
         self._hooks[SDelHooks.BEFORE_DELETION] = self._Save
-        #self._hooks[SDelHooks.ACCESS_KEY_ERROR] = self._Load
+        self._hooks[SDelHooks.ACCESS_KEY_ERROR] = self._Load
     
     def GetItemBypass(self, __key: ID) -> UserSpace:
         """Gets the `UserSpace` object associated with the key. If the
@@ -589,13 +592,12 @@ class UserPool(SDelPool[ID, UserSpace]):
         """
         return super().GetItemBypass(__key)
     
-    """def _Load(self, key: int, err: KeyError) -> UserSpace:
+    def _Load(self, key: ID, key_err: KeyError) -> UserSpace:
         global botVars
         userData = botVars.db.GetUser(key)
         if userData is None:
-            userData = UserData(key)
-        uSpace = UserSpace(userData)
-        return uSpace"""
+            raise key_err
+        return UserSpace(userData)
     
     def _Save(self, key: ID) -> None:
         global botVars
@@ -642,10 +644,16 @@ class DomainPool(SDelPool[DomainLang, gettext.GNUTranslations]):
                 domain=key.domain,
                 localedir=botVars.localDir,
                 languages=[key.lang,])
-        except FileNotFoundError:
-            raise err
-        except OSError as osErr:
-            logging.info('E1-4', stack_info=True, exc_info=True)
+        except OSError as error:
+            # Catches OSError and all its subclasses including
+            # FileNotFoundError...
+            logging.info(
+                'E4',
+                key.domain,
+                key.lang,
+                error,
+                stack_info=True,
+                exc_info=True,)
             raise err
         else:
             self._items[key] = gnuTrans

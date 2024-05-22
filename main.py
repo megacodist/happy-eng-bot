@@ -84,7 +84,7 @@ def _LoadPagesWizards() -> None:
 			dPages = {page.CMD:page for page in modPages}
 			dWizards = {wiz.CMD:wiz for wiz in modWizards}
 		except Exception:
-			logging.error(f'E1-2: {(modsDir /modName)}')
+			logging.error(f'E2: {(modsDir /modName)}')
 			continue
 		# Loading pages...
 		for cmd, cb in dPages.items():
@@ -139,7 +139,8 @@ async def _DispatchInput(
 			# Creating the new user based on the language...
 			userData = UserData(bale_user.id, input_.cb)
 			userSpace = UserSpace(userData)
-			botVars.pUsers.SetItemBypass(bale_user.id, userSpace)
+			userSpace.baleUser = bale_user
+			botVars.pUsers.SetItem(bale_user.id, userSpace)
 			# Showing available commands to the newcomer...
 			await userSpace.ApendInput(
 				CmdInput(input_.bale_msg, bale_user.id, '/help'))
@@ -281,9 +282,7 @@ def BotMain() -> None:
 	# Running the bot...
 	try:
 		asyncio.run(_StartBot())
-	except KeyboardInterrupt:
-		asyncio.create_task(_happyEngBot.close())
-	except SystemExit:
+	except (KeyboardInterrupt, SystemExit,):
 		asyncio.create_task(_happyEngBot.close())
 	finally:
 		botVars.pUsers.Clear()

@@ -36,3 +36,6 @@ msgstr "Last name"
 #: cmds/basic.py:
 msgid "PHONE"
 msgstr "Phone"
+
+msgid "SIGN_IN_ENTER_FIRST_NAME"
+msgstr "Enter your first name:"

@@ -2,10 +2,9 @@
 # 
 #
 
-from dbm import gnu
 import gettext
 import logging
-from typing import Any, Callable, Coroutine
+from typing import Any, Coroutine
 
 from bale import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -13,7 +12,7 @@ from db import UserData
 import lang as strs
 import lang.cmds.basic as basic_strs
 from utils.types import (
-    AbsPage, AbsWizard, DomainLang, BotVars, ID, UserSpace, WizardRes)
+    AbsPage, AbsWizard, DomainLang, BotVars, ID, TextInput, UserSpace, WizardRes)
 
 
 # Bot-wide variables ================================================
@@ -60,18 +59,24 @@ class SigninWiz(AbsWizard):
         self._lastName: str | None = None
         self._phone: str | None = None
 
-    async def Start(self) -> Coroutine[Any, Any, Message]:
+    async def Start(self) -> WizardRes:
         global botVars
         userSpace = botVars.pUsers.GetItemBypass(self._baleId)
         self._firstName = userSpace.dbUser._firstName
         self._lastName = userSpace.dbUser._lastName
         self._phone = userSpace.dbUser._phone
         if self._firstName and self._lastName and self._phone:
-            await self._Confirm()
+            return await self._Confirm()
         else:
-            return self.Reply(
-                pUsers[self._baleId].GetFirstInput().bale_msg.reply,
-                basic_strs.SIGN_IN_ENTER_FIRST_NAME)
+            basicTrans = botVars.pDomains.GetItem(
+                DomainLang('cmds_basic', userSpace.dbUser.Lang))
+            _ = basicTrans.gettext
+            return WizardRes(
+                self.Reply(
+                    botVars.bot.send_message,
+                    userSpace.GetFirstInput().bale_msg.chat_id,
+                    _('SIGN_IN_ENTER_FIRST_NAME')),
+                False,)
 
     async def ReplyText(self) -> WizardRes:
         """Gets from user and fills folowing items in consecutive calls:
@@ -80,9 +85,14 @@ class SigninWiz(AbsWizard):
         3. e-mail
         4. phone no.
         """
+        global botVars
         buttons = InlineKeyboardMarkup()
         if self._firstName is None:
-            self._firstName = pUsers[self._baleId].GetFirstInput().data
+            lastInput = botVars.pUsers[self._baleId].GetFirstInput()
+            if not isinstance(lastInput, TextInput):
+                logging.error('E3-2', stack_info=True, exc_info=True)
+                return WizardRes(None, False)
+            self._firstName = lastInput.text
             self._AppendRestartBtn(buttons)
             return WizardRes(
                 self.Reply(
@@ -124,7 +134,7 @@ class SigninWiz(AbsWizard):
                     components=buttons),
                 False,)
         else:
-            logging.error('E1-3')
+            logging.error('E3-1')
             return WizardRes(None, False,)
 
     async def ReplyCallback(self) -> WizardRes:
