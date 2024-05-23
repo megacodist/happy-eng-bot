@@ -52,15 +52,15 @@ class HelpPage(AbsPage):
         cmdsTrans = botVars.pDomains.GetItem(
             DomainLang('cmds', userSpace.dbUser.Lang))
         _ = cmdsTrans.gettext
-        text = _('HELP_ALL_CMDS')
+        text = _('HELP_ALL_CMDS') + '\n' + ('-' * 20)
         if botVars.pages:
             text += '\n' + '\n'.join(
                 f'{cmd}\n{botVars.pages[cmd].GetDescr(
                     userSpace.dbUser.Lang)}\n'
                 for cmd in botVars.pages)
         if botVars.wizards:
-            text += '\n\n' + '\n'.join(
-                f'{cmd}:\n{botVars.wizards[cmd].GetDescr(
+            text += '\n'.join(
+                f'{cmd}\n{botVars.wizards[cmd].GetDescr(
                     userSpace.dbUser.Lang)}\n'
                 for cmd in botVars.wizards)
         await userSpace.AppendOutput(

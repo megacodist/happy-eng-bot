@@ -43,13 +43,13 @@ class SqliteDb(IDatabase):
         if res is None:
             return None
         hourlyFreqs = HourlyFrequencies()
-        hourlyFreqs.Bytes = res[5]
+        hourlyFreqs.Bytes = res[6]
         return UserData(
             res[0],
+            res[4],
             res[1],
             res[2],
             res[3],
-            res[4],
             res[5],
             hourlyFreqs)
     

@@ -4,14 +4,14 @@
 """This modules offers utilities to be used for configuring the Bot,
 including:
 
-1. `ConfigureLogging`: Configures the logger for saving events to a file.
+1. `ConfigureLogger`: Configures the logger for saving events to a file.
 """
 
 import logging
 from os import PathLike
 
 
-def ConfigureLogging(filename: PathLike) -> None:
+def ConfigureLogger(filename: PathLike) -> None:
     """Configures the logger for saving events to a file."""
     # Declaring variables ---------------------------------
     import platform

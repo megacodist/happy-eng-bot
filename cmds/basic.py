@@ -4,15 +4,13 @@
 
 import gettext
 import logging
-from typing import Any, Coroutine
 
-from bale import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from bale import InlineKeyboardButton, InlineKeyboardMarkup
 
-from db import UserData
-import lang as strs
 import lang.cmds.basic as basic_strs
 from utils.types import (
-    AbsPage, AbsWizard, DomainLang, BotVars, ID, TextInput, UserSpace, WizardRes)
+    AbsPage, AbsWizard, DomainLang, BotVars, ID, TextInput, UserSpace,
+    WizardRes)
 
 
 # Bot-wide variables ================================================
@@ -44,7 +42,7 @@ class SigninWiz(AbsWizard):
     @classmethod
     def GetDescr(cls, lang: str) -> str:
         global botVars
-        cmdsTrans = botVars.pDomains.GetItem(DomainLang(lang, 'cmds_basic'))
+        cmdsTrans = botVars.pDomains.GetItem(DomainLang('cmds_basic', lang))
         _ = cmdsTrans.gettext
         return _('SIGNIN_CMD_DESCR')
 
@@ -85,56 +83,46 @@ class SigninWiz(AbsWizard):
         3. e-mail
         4. phone no.
         """
+        # Declaring variables -----------------------------
         global botVars
+        basicTrans: gettext.GNUTranslations
+        # Processing input --------------------------------
+        lastInput = botVars.pUsers[self._baleId].GetFirstInput()
+        if not isinstance(lastInput, TextInput):
+            logging.error('E3-2', stack_info=True)
+            return WizardRes(None, False)
         buttons = InlineKeyboardMarkup()
+        userSpace = botVars.pUsers.GetItemBypass(self._baleId)
+        basicTrans = botVars.pDomains.GetItem(
+            DomainLang('cmds_basic', userSpace.dbUser.Lang))
+        _ = basicTrans.gettext
         if self._firstName is None:
-            lastInput = botVars.pUsers[self._baleId].GetFirstInput()
-            if not isinstance(lastInput, TextInput):
-                logging.error('E3-2', stack_info=True, exc_info=True)
-                return WizardRes(None, False)
             self._firstName = lastInput.text
-            self._AppendRestartBtn(buttons)
+            buttons.add(self._GetRestartBtn())
             return WizardRes(
                 self.Reply(
-                    pUsers[self._baleId].GetFirstInput().bale_msg.reply,
-                    basic_strs.SIGN_IN_ENTER_LAST_NAME,
+                    botVars.bot.send_message,
+                    userSpace.GetFirstInput().bale_msg.chat_id,
+                    _('SIGN_IN_ENTER_LAST_NAME'),
                     components=buttons),
                 False)
         elif self._lastName is None:
-            self._lastName = pUsers[self._baleId].GetFirstInput().data
-            self._AppendRestartBtn(buttons)
+            self._lastName = lastInput.text
+            buttons.add(self._GetRestartBtn())
             return WizardRes(
                 self.Reply(
-                    pUsers[self._baleId].GetFirstInput().bale_msg.reply,
-                    basic_strs.SIGN_IN_ENTER_PHONE,
+                    botVars.bot.send_message,
+                    userSpace.GetFirstInput().bale_msg.chat_id,
+                    _('SIGN_IN_ENTER_PHONE'),
                     components=buttons),
                 False)
         elif self._phone is None:
             # Saving data to 'phone'...
-            self._phone = pUsers[self._baleId].GetFirstInput().data
+            self._phone = lastInput.text
             # Confirming all data...
-            buttons.add(InlineKeyboardButton(
-                strs.CONFIRM,
-                callback_data=f'{self._CONFIRM_CBD}'))
-            buttons.add(InlineKeyboardButton(
-                strs.RESTART,
-                callback_data=f'{self._RESTART_CBD}'))
-            response = '{0}\n{1}: {2}\n{3}: {4}\n{5}: {6}'.format(
-                strs.CONFIRM_DATA,
-                basic_strs.FIRST_NAME,
-                self._firstName,
-                basic_strs.LAST_NAME,
-                self._lastName,
-                basic_strs.PHONE,
-                self._phone)
-            return WizardRes(
-                self.Reply(
-                    pUsers[self._baleId].GetFirstInput().bale_msg.reply,
-                    response,
-                    components=buttons),
-                False,)
+            return await self._Confirm()
         else:
-            logging.error('E3-1')
+            logging.error('E3-1', stack_info=True)
             return WizardRes(None, False,)
 
     async def ReplyCallback(self) -> WizardRes:
@@ -142,25 +130,25 @@ class SigninWiz(AbsWizard):
         from utils.types import CbInput
         global botVars
         gnuTrans: gettext.GNUTranslations
-        #  -------------------------
+        # Replying ----------------------------------------
         userSpace = botVars.pUsers.GetItemBypass(self._baleId)
-        input_: CbInput = userSpace.GetFirstInput() # type: ignore
-        match input_.cb:
+        lastInput = userSpace.GetFirstInput()
+        if not isinstance(lastInput, CbInput):
+            logging.error('E3-3', stack_info=True)
+            return WizardRes(None, False)
+        match lastInput.cb:
             case self._CONFIRM_CBD:
-                userSpace.dbUser = UserData(
-                    self._baleId,
-                    self._firstName,
-                    self._lastName,
-                    self._phone)
+                userSpace.dbUser.FirstName = self._firstName # type:ignore
+                userSpace.dbUser.LastName = self._lastName # type:ignore
+                userSpace.dbUser.Phone = self._phone # type:ignore
                 return WizardRes(self.Reply(None), True,)
             case self._RESTART_CBD:
                 self._firstName = None
                 self._lastName = None
                 self._phone = None
-                return WizardRes(self.Reply(self.Start), False,)
+                return await self.Start()
             case _:
-                logging.error(f'{pUsers[self._baleId].GetFirstInput().data}:'
-                    f' unknown callback in {self.__class__.__qualname__}')
+                logging.error(f'{lastInput.cb}:')
                 return WizardRes(None, False,)
     
     async def _Confirm(self) -> WizardRes:

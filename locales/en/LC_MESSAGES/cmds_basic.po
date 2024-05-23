@@ -39,3 +39,9 @@ msgstr "Phone"
 
 msgid "SIGN_IN_ENTER_FIRST_NAME"
 msgstr "Enter your first name:"
+
+msgid "SIGN_IN_ENTER_LAST_NAME"
+msgstr "Enter your last name:"
+
+msgid "SIGN_IN_ENTER_PHONE"
+msgstr "Enter your phone:"

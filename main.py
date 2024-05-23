@@ -6,7 +6,7 @@ from __future__ import annotations
 import gettext
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 from bale import (
     Bot, Update, Message, CallbackQuery, Chat, User, SuccessfulPayment)
@@ -269,11 +269,11 @@ def BotMain() -> None:
 	"""The entry point of the Bot."""
 	# Declaring variables ---------------------------------
 	import asyncio
-	from logger import ConfigureLogging
+	from logger import ConfigureLogger
 	global _happyEngBot
 	global botVars
 	# Starting point --------------------------------------
-	ConfigureLogging(_APP_DIR / 'log.log')
+	ConfigureLogger(_APP_DIR / 'log.log')
 	_LoadConfig()
 	_LoadDatabase()
 	_LoadPagesWizards()
