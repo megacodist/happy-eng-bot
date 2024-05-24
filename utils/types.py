@@ -17,6 +17,7 @@ from collections.abc import Awaitable
 import enum
 from functools import partial
 import gettext
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 import logging
 
@@ -24,6 +25,14 @@ from bale import Bot, Message, User, InlineKeyboardButton, InlineKeyboardMarkup
 
 from . import singleton
 from db import ID, IDatabase, UserData
+
+
+class UnsupportedLang(Exception):
+    pass
+
+
+class DomainNotFoundError(Exception):
+    pass
 
 
 if TYPE_CHECKING:
@@ -268,6 +277,15 @@ class AbsPage(ABC):
         pass
 
 
+class CancelType(enum.IntEnum):
+    ALLOWED = 1
+    """The wizard can be canceled with no limitation."""
+    ASK = 2
+    """The wizard can be canceled but ask the user."""
+    FORBIDDEN = 3
+    """The wizard cannot be canceled."""
+
+
 class AbsWizard(ABC):
     """Abstract base class for operations in the Bot. Implementations
     must avoid returning replies directly but rather use `Reply` method.
@@ -306,6 +324,11 @@ class AbsWizard(ABC):
     def Uwid(self) -> str:
         """Returns the unique ID of this operation."""
         return self._UWID
+    
+    @property
+    @abstractmethod
+    def Cancelable(self) -> CancelType:
+        pass
     
     @property
     def LastReply(self) -> partial[Awaitable[Message]] | None:
@@ -587,16 +610,17 @@ class UserPool(SDelPool[ID, UserSpace]):
     def GetItemBypass(self, __key: ID) -> UserSpace:
         """Gets the `UserSpace` object associated with the key. If the
         object does not exist, it tries to load user data from database,
-        If user information does not find in the database, the `dbUser`
-        attribute will bw set to `None`.
+        If user information does not find in the database, it raises
+        `KeyError`.
         """
         return super().GetItemBypass(__key)
     
-    def _Load(self, key: ID, key_err: KeyError) -> UserSpace:
+    def _Load(self, key: ID) -> UserSpace:
         global botVars
         userData = botVars.db.GetUser(key)
         if userData is None:
-            raise key_err
+            raise KeyError(f'User with ID={key} was neither found in {self}'
+                ' nor database.')
         return UserSpace(userData)
     
     def _Save(self, key: ID) -> None:
@@ -652,17 +676,55 @@ class DomainPool(SDelPool[DomainLang, gettext.GNUTranslations]):
                 key.domain,
                 key.lang,
                 error,
-                stack_info=True,
                 exc_info=True,)
             raise err
         else:
             self._items[key] = gnuTrans
             return gnuTrans
+    
+    def GetStr(self, bale_id: ID, domain: str, msg_id: str) -> str:
+        # Declaring variables -----------------------------
+        global botVars
+        userSpace: UserSpace
+        lang: str
+        # Getting string ----------------------------------
+        userSpace = botVars.pUsers.GetItemBypass(bale_id)
+        lang = userSpace.dbUser.Lang
+        if lang not in botVars.langs:
+            raise UnsupportedLang()
+        try:
+            gnuTrans = self.GetItem(DomainLang(domain, lang))
+        except FileNotFoundError:
+            langDir = botVars.BOT_DIR / botVars.localDir / 'LC_MESSAGES' / \
+                lang
+            if not langDir.exists():
+                raise UnsupportedLang()
+            logging.error('E4-1', bale_id, domain, lang, stack_info=True)
+            # Getting the string of the default language...
+            lang = botVars.defaultLang
+            try:
+                gnuTrans = self.GetItem(DomainLang(domain, lang))
+            except FileNotFoundError:
+                logging.error('E4-1', bale_id, domain, lang, stack_info=True)
+                raise DomainNotFoundError()
+        msgStr = gnuTrans.gettext(msg_id)
+        if msgStr == msg_id:
+            logging.error(
+                'E4-2',
+                bale_id,
+                msg_id,
+                domain,
+                lang,
+                stack_info=True)
+        return msgStr
 
 
 class BotVars(object, metaclass=singleton.SingletonMeta):
     ADMIN_IDS: tuple[int, ...] = tuple()
     """A tuple of ID's of admin users."""
+
+    BOT_DIR: Path
+    """The directory of the Bot."""
 
     bot: Bot
 
@@ -694,6 +756,12 @@ class BotVars(object, metaclass=singleton.SingletonMeta):
     translation objects for all domains and all supported languages of
     the Bot.
     """
+
+    defaultLang: str
+    """The default language of the Bot."""
+
+    langs: tuple[str, ...]
+    """A tuple of all supported languages."""
 
     def __init__(self) -> None:
         self.pUsers = UserPool(del_timint=self.MIN_USER_LS)

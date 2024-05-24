@@ -9,7 +9,7 @@ from bale import InlineKeyboardButton, InlineKeyboardMarkup
 
 import lang.cmds.basic as basic_strs
 from utils.types import (
-    AbsPage, AbsWizard, DomainLang, BotVars, ID, TextInput, UserSpace,
+    AbsPage, AbsWizard, CancelType, DomainLang, BotVars, ID, TextInput, UserSpace,
     WizardRes)
 
 
@@ -45,6 +45,10 @@ class SigninWiz(AbsWizard):
         cmdsTrans = botVars.pDomains.GetItem(DomainLang('cmds_basic', lang))
         _ = cmdsTrans.gettext
         return _('SIGNIN_CMD_DESCR')
+    
+    @property
+    def Cancelable(self) -> CancelType:
+        return CancelType.ASK
 
     def __init__(self, bale_id: ID, uwid: str) -> None:
         """Initializes a new instance of the sign-in operation with the
@@ -197,3 +201,20 @@ class SigninWiz(AbsWizard):
         return InlineKeyboardButton(
             _('CONFIRM'),
             callback_data=f'{self.Uwid}-{self._CONFIRM_CBD}')
+
+
+class LangWiz(AbsWizard):
+    CMD = '/lang'
+
+    def __init__(
+            self,
+            bale_id: ID,
+            uw_id: str,
+            cancel: CancelType = CancelType.ALLOWED,
+            ) -> None:
+        super().__init__(bale_id, uw_id)
+        self._cancelType = cancel
+    
+    @property
+    def Cancelable(self) -> CancelType:
+        return self._cancelType

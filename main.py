@@ -18,7 +18,7 @@ from utils.types import (
 
 
 # Bot-wide variables ================================================
-_APP_DIR = Path(__file__).resolve().parent
+_BOT_DIR = Path(__file__).resolve().parent
 """The directory of the Bot."""
 
 _TOKEN: str
@@ -40,7 +40,7 @@ def _LoadConfig() -> None:
 	global botVars
 	global _TOKEN
 	# Functionality ---------------------------------------
-	with open(_APP_DIR / 'config.toml', mode='rb') as tomlObj:
+	with open(_BOT_DIR / 'config.toml', mode='rb') as tomlObj:
 		settings = tomllib.load(tomlObj)
 		botVars.ADMIN_IDS = settings['ADMIN_IDS']
 		_TOKEN = settings['BALE_BOT_TOKEN']
@@ -52,7 +52,7 @@ def _LoadDatabase() -> None:
 	from db.sqlite3 import SqliteDb
 	global botVars
 	# Loading database ------------------------------------
-	botVars.db = SqliteDb(_APP_DIR / 'db.db3')
+	botVars.db = SqliteDb(_BOT_DIR / 'db.db3')
 
 
 def _LoadPagesWizards() -> None:
@@ -69,7 +69,7 @@ def _LoadPagesWizards() -> None:
 	botVars.pages.update({pg.CMD:pg for pg in cmds.GetPages()})
 	botVars.wizards.update({wiz.CMD:wiz for wiz in cmds.GetWizards()})
 	# Initializing & loading the other module of commands package...
-	modsDir = _APP_DIR / 'cmds'
+	modsDir = _BOT_DIR / 'cmds'
 	modNames = list(modsDir.glob('*.py'))
 	modNames = [modName.relative_to(modsDir) for modName in modNames]
 	try:
@@ -113,12 +113,30 @@ def _DoOtherInit() -> None:
 	global botVars
 	global _
 	# Initializing the remaining --------------------------
+	botVars.BOT_DIR = _BOT_DIR
+	botVars.defaultLang = 'en'
 	botVars.localDir = 'locales'
 	botLang = gettext.translation(
 		domain='main',
 		localedir=botVars.localDir,
-		languages=['en',],)
+		languages=[botVars.defaultLang,],)
 	_ = botLang.gettext
+	#
+	botVars.langs = _GetLangs()
+
+
+def _GetLangs() -> tuple[str, ...]:
+	global botVars
+	langs = []
+	localesDir = botVars.BOT_DIR / botVars.localDir
+	if localesDir.is_dir():
+		for entry in localesDir.iterdir():
+			lang_dir = entry / 'LC_MESSAGES'
+			if lang_dir.is_dir():
+				mo_files = list(lang_dir.glob('*.mo'))
+				if mo_files:
+					langs.append(entry.name)
+	return tuple(langs)
 
 
 async def _DispatchInput(
@@ -273,7 +291,7 @@ def BotMain() -> None:
 	global _happyEngBot
 	global botVars
 	# Starting point --------------------------------------
-	ConfigureLogger(_APP_DIR / 'log.log')
+	ConfigureLogger(_BOT_DIR / 'log.log')
 	_LoadConfig()
 	_LoadDatabase()
 	_LoadPagesWizards()

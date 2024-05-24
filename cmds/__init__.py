@@ -91,7 +91,6 @@ def LangSelectPage(bale_msg: Message) -> Awaitable[Message]:
                     'main',
                     item.name,
                     error,
-                    stack_info=True,
                     exc_info=True,)
             else:
                 _ = gnuTrans.gettext
