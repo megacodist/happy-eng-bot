@@ -51,9 +51,10 @@ class SDelHooks(enum.IntEnum):
     """
     ACCESS_KEY_ERROR = enum.auto()
     """This callback is invoked when `KeyError` occurred during memeber
-    access. It accepts the hashable arguments of `SDelPool` API and the
-    `KeyError` object and returns `None`. If callback can not resolve
-    the problem, it must re-raise the exception.
+    access. It accepts the hashable arguments of `SDelPool` API and
+    returns `None`. It must find/load the object from a resource and put
+    it in the pool usually by calling `SetItemBypass`. If callback can
+    not find/load the object, it must raise a `KeyError`.
     """
     BEFORE_ASSIGNMENT = enum.auto()
     """This callback is invoked before member assignment. It accepts
@@ -150,8 +151,8 @@ class SDelPool[_Hashable, _SDelType]:
             mem = self._items[__key]
         except KeyError as err:
             if SDelHooks.ACCESS_KEY_ERROR in self._hooks:
-                mem = self._hooks[SDelHooks.ACCESS_KEY_ERROR](__key, err)
-                self._items[__key] = mem
+                self._hooks[SDelHooks.ACCESS_KEY_ERROR](__key)
+                mem = self._items[__key]
             else:
                 raise err
         else:
@@ -267,7 +268,7 @@ class AbsPage(ABC):
 
     @classmethod
     @abstractmethod
-    def GetDescr(cls, lang: str) -> str:
+    def GetDescr(cls, bale_id: ID) -> str:
         """Gets the description of the page."""
         pass
 
@@ -300,7 +301,7 @@ class AbsWizard(ABC):
 
     @classmethod
     @abstractmethod
-    def GetDescr(cls, lang: str) -> str:
+    def GetDescr(cls, bale_id: ID) -> str:
         """Gets the description of the wizard."""
         pass
     
@@ -615,13 +616,13 @@ class UserPool(SDelPool[ID, UserSpace]):
         """
         return super().GetItemBypass(__key)
     
-    def _Load(self, key: ID) -> UserSpace:
+    def _Load(self, key: ID) -> None:
         global botVars
         userData = botVars.db.GetUser(key)
         if userData is None:
             raise KeyError(f'User with ID={key} was neither found in {self}'
                 ' nor database.')
-        return UserSpace(userData)
+        self.SetItemBypass(key, UserSpace(userData))
     
     def _Save(self, key: ID) -> None:
         global botVars
@@ -657,32 +658,39 @@ class DomainPool(SDelPool[DomainLang, gettext.GNUTranslations]):
         super().__init__(auto=auto, del_timint=del_timint)
         self._hooks[SDelHooks.ACCESS_KEY_ERROR] = self._Load
     
-    def _Load(
-            self,
-            key: DomainLang,
-            err: KeyError,
-            ) -> gettext.GNUTranslations:
+    def GetItem(self, __key: DomainLang) -> gettext.GNUTranslations:
+        """Gets the `GNUTranslations` for the specified domain and
+        language. It raises `KeyError` if it neither find it in the
+        underlying data structure nor in the locales folder. In some
+        rare cases it might raises `OSError`.
+        """
+        return super().GetItem(__key)
+    
+    def _Load(self, key: DomainLang,) -> None:
+        """Loads the specified domain of the language and put in the
+        underlying data structure. It raises `KeyError` if the domain
+        of the languages does not exist. In some rare cases it might
+        raises `OSError`.
+        """
         global botVars
         try:
             gnuTrans = gettext.translation(
                 domain=key.domain,
-                localedir=botVars.localDir,
+                localedir=botVars.LOCALES_DIR,
                 languages=[key.lang,])
-        except OSError as error:
-            # Catches OSError and all its subclasses including
-            # FileNotFoundError...
-            logging.info(
-                'E4',
-                key.domain,
-                key.lang,
-                error,
-                exc_info=True,)
-            raise err
+        except FileNotFoundError:
+            raise KeyError()
         else:
-            self._items[key] = gnuTrans
-            return gnuTrans
+            self.SetItemBypass(key, gnuTrans)
     
     def GetStr(self, bale_id: ID, domain: str, msg_id: str) -> str:
+        """Gets the string associated with `msg_id` from the specified
+        domain in the language selected by Bale user.
+
+        #### Exceptions:
+        * `UnsupportedLang`
+        * `DomainNotFoundError`
+        """
         # Declaring variables -----------------------------
         global botVars
         userSpace: UserSpace
@@ -695,8 +703,8 @@ class DomainPool(SDelPool[DomainLang, gettext.GNUTranslations]):
         try:
             gnuTrans = self.GetItem(DomainLang(domain, lang))
         except FileNotFoundError:
-            langDir = botVars.BOT_DIR / botVars.localDir / 'LC_MESSAGES' / \
-                lang
+            langDir = botVars.BOT_DIR / botVars.LOCALES_DIR / lang / \
+                'LC_MESSAGES'
             if not langDir.exists():
                 raise UnsupportedLang()
             logging.error('E4-1', bale_id, domain, lang, stack_info=True)
@@ -704,7 +712,7 @@ class DomainPool(SDelPool[DomainLang, gettext.GNUTranslations]):
             lang = botVars.defaultLang
             try:
                 gnuTrans = self.GetItem(DomainLang(domain, lang))
-            except FileNotFoundError:
+            except KeyError:
                 logging.error('E4-1', bale_id, domain, lang, stack_info=True)
                 raise DomainNotFoundError()
         msgStr = gnuTrans.gettext(msg_id)
@@ -746,7 +754,7 @@ class BotVars(object, metaclass=singleton.SingletonMeta):
 
     wizards: dict[str, type[AbsWizard]] = {}
 
-    localDir: str
+    LOCALES_DIR: str
     """The directory of the translated strings in the format of GNU
     gettext API.
     """

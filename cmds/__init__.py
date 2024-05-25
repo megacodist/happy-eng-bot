@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 import gettext
 import logging
 from msilib.schema import File
-from typing import Awaitable
+from typing import Awaitable, Callable
 
 from bale import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -34,34 +34,28 @@ class HelpPage(AbsPage):
     CMD = '/help'
 
     @classmethod
-    def GetDescr(cls, lang: str) -> str:
+    def GetDescr(cls, bale_id: ID) -> str:
         global botVars
-        cmdsTrans = botVars.pDomains.GetItem(DomainLang('cmds', lang))
-        _ = cmdsTrans.gettext
-        return _('HELP_CMD_DESCR')
+        return botVars.pDomains.GetStr(bale_id, 'cmds', 'HELP_CMD_DESCR')
 
     @classmethod
     async def Show(cls, bale_id: ID) -> None:
         """Gets a list of all available commands."""
         # Declaring variables ---------------------------------
         global botVars
-        cmdsTrans: gettext.GNUTranslations
         userSpace: UserSpace
+        GetStr: Callable[[ID, str, str], str]
         # Functioning -----------------------------------------
         userSpace = botVars.pUsers.GetItemBypass(bale_id)
-        cmdsTrans = botVars.pDomains.GetItem(
-            DomainLang('cmds', userSpace.dbUser.Lang))
-        _ = cmdsTrans.gettext
-        text = _('HELP_ALL_CMDS') + '\n' + ('-' * 20)
+        GetStr = botVars.pDomains.GetStr
+        text = GetStr(bale_id, 'cmds', 'HELP_ALL_CMDS') + '\n' + ('-' * 20)
         if botVars.pages:
             text += '\n' + '\n'.join(
-                f'{cmd}\n{botVars.pages[cmd].GetDescr(
-                    userSpace.dbUser.Lang)}\n'
+                f'{cmd}\n{botVars.pages[cmd].GetDescr(bale_id)}\n'
                 for cmd in botVars.pages)
         if botVars.wizards:
             text += '\n'.join(
-                f'{cmd}\n{botVars.wizards[cmd].GetDescr(
-                    userSpace.dbUser.Lang)}\n'
+                f'{cmd}\n{botVars.wizards[cmd].GetDescr(bale_id)}\n'
                 for cmd in botVars.wizards)
         await userSpace.AppendOutput(
             botVars.bot.send_message(
@@ -69,38 +63,38 @@ class HelpPage(AbsPage):
                 text,))
 
 
-def LangSelectPage(bale_msg: Message) -> Awaitable[Message]:
-    """Asks for prefered language available."""
+def LangSelectPage(bale_msg: Message, cbd: str) -> Awaitable[Message]:
+    """Asks for prefered language available. `cbd` is the prefix of
+    callback data.
+    """
     from pathlib import Path
     global botVars
     texts = list[str]()
     buttons = InlineKeyboardMarkup()
     row = 1
-    for item in Path(botVars.localDir).iterdir():
-        if item.is_dir():
-            try:
-                gnuTrans = gettext.translation(
-                    domain='main',
-                    localedir=botVars.localDir,
-                    languages=[item.name])
-            except OSError as error:
-                # Catches OSError and all its subclasses including
-                # FileNotFoundError...
-                logging.error(
-                    'E4',
-                    'main',
-                    item.name,
-                    error,
-                    exc_info=True,)
-            else:
-                _ = gnuTrans.gettext
-                texts.append(_('SELECT_LANG'))
-                buttons.add(
-                    InlineKeyboardButton(
-                        _('LANG'),
-                        callback_data=f'0-{item.name}'),
-                    row,)
-                row += 1
+    for lang in botVars.langs:
+        try:
+            gnuTrans = gettext.translation(
+                domain='main',
+                localedir=botVars.LOCALES_DIR,
+                languages=[lang,])
+        except OSError as error:
+            # Catches OSError and all its subclasses including
+            # FileNotFoundError...
+            logging.error(
+                'E4-3',
+                None,
+                'main',
+                lang,
+                exc_info=True,)
+        else:
+            texts.append(gnuTrans.gettext('SELECT_LANG'))
+            buttons.add(
+                InlineKeyboardButton(
+                    gnuTrans.gettext('LANG'),
+                    callback_data=f'{cbd}-{lang}'),
+                row,)
+            row += 1
     if texts:
         return botVars.bot.send_message(
             bale_msg.chat_id, # type: ignore

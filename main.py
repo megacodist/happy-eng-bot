@@ -115,10 +115,10 @@ def _DoOtherInit() -> None:
 	# Initializing the remaining --------------------------
 	botVars.BOT_DIR = _BOT_DIR
 	botVars.defaultLang = 'en'
-	botVars.localDir = 'locales'
+	botVars.LOCALES_DIR = 'locales'
 	botLang = gettext.translation(
 		domain='main',
-		localedir=botVars.localDir,
+		localedir=botVars.LOCALES_DIR,
 		languages=[botVars.defaultLang,],)
 	_ = botLang.gettext
 	#
@@ -128,7 +128,7 @@ def _DoOtherInit() -> None:
 def _GetLangs() -> tuple[str, ...]:
 	global botVars
 	langs = []
-	localesDir = botVars.BOT_DIR / botVars.localDir
+	localesDir = botVars.BOT_DIR / botVars.LOCALES_DIR
 	if localesDir.is_dir():
 		for entry in localesDir.iterdir():
 			lang_dir = entry / 'LC_MESSAGES'
@@ -149,6 +149,7 @@ async def _DispatchInput(
 	userSpace: UserSpace
 	hour: int
 	duration: int
+	CBD_PREFIX = '0'
 	# Diaptching ------------------------------------------
 	try:
 		userSpace = botVars.pUsers.GetItemBypass(bale_user.id)
@@ -163,7 +164,7 @@ async def _DispatchInput(
 			await userSpace.ApendInput(
 				CmdInput(input_.bale_msg, bale_user.id, '/help'))
 		else:
-			await LangSelectPage(input_.bale_msg)
+			await LangSelectPage(input_.bale_msg, CBD_PREFIX)
 	else:
 		userSpace.baleUser = bale_user
 		userSpace.dbUser.Frequencies.Increment(input_.bale_msg.date.hour)

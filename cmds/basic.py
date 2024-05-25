@@ -33,18 +33,17 @@ class SigninWiz(AbsWizard):
     """
     CMD = '/signin'
 
-    DESCR = basic_strs.SIGNIN_INTRO
-
     _CONFIRM_CBD = '10'
 
     _RESTART_CBD = '11'
 
     @classmethod
-    def GetDescr(cls, lang: str) -> str:
+    def GetDescr(cls, bale_id: ID) -> str:
         global botVars
-        cmdsTrans = botVars.pDomains.GetItem(DomainLang('cmds_basic', lang))
-        _ = cmdsTrans.gettext
-        return _('SIGNIN_CMD_DESCR')
+        return botVars.pDomains.GetStr(
+            bale_id,
+            'cmds_basic',
+            'SIGNIN_CMD_DESCR')
     
     @property
     def Cancelable(self) -> CancelType:
@@ -70,14 +69,14 @@ class SigninWiz(AbsWizard):
         if self._firstName and self._lastName and self._phone:
             return await self._Confirm()
         else:
-            basicTrans = botVars.pDomains.GetItem(
-                DomainLang('cmds_basic', userSpace.dbUser.Lang))
-            _ = basicTrans.gettext
             return WizardRes(
                 self.Reply(
                     botVars.bot.send_message,
                     userSpace.GetFirstInput().bale_msg.chat_id,
-                    _('SIGN_IN_ENTER_FIRST_NAME')),
+                    botVars.pDomains.GetStr(
+                        self._baleId,
+                        'cmds_basic',
+                        'SIGN_IN_ENTER_FIRST_NAME')),
                 False,)
 
     async def ReplyText(self) -> WizardRes:
@@ -97,9 +96,7 @@ class SigninWiz(AbsWizard):
             return WizardRes(None, False)
         buttons = InlineKeyboardMarkup()
         userSpace = botVars.pUsers.GetItemBypass(self._baleId)
-        basicTrans = botVars.pDomains.GetItem(
-            DomainLang('cmds_basic', userSpace.dbUser.Lang))
-        _ = basicTrans.gettext
+        GetStr = botVars.pDomains.GetStr
         if self._firstName is None:
             self._firstName = lastInput.text
             buttons.add(self._GetRestartBtn())
@@ -107,7 +104,10 @@ class SigninWiz(AbsWizard):
                 self.Reply(
                     botVars.bot.send_message,
                     userSpace.GetFirstInput().bale_msg.chat_id,
-                    _('SIGN_IN_ENTER_LAST_NAME'),
+                    GetStr(
+                        self._baleId,
+                        'cmds_basic',
+                        'SIGN_IN_ENTER_LAST_NAME'),
                     components=buttons),
                 False)
         elif self._lastName is None:
@@ -117,7 +117,10 @@ class SigninWiz(AbsWizard):
                 self.Reply(
                     botVars.bot.send_message,
                     userSpace.GetFirstInput().bale_msg.chat_id,
-                    _('SIGN_IN_ENTER_PHONE'),
+                    GetStr(
+                        self._baleId,
+                        'cmds_basic',
+                        'SIGN_IN_ENTER_PHONE'),
                     components=buttons),
                 False)
         elif self._phone is None:
@@ -162,14 +165,21 @@ class SigninWiz(AbsWizard):
         userSpace: UserSpace
         # Asking for confirmation -------------------------
         userSpace = botVars.pUsers.GetItemBypass(self._baleId)
+        GetStr = botVars.pDomains.GetStr
         gnuTrans = botVars.pDomains.GetItem(
             DomainLang('cmds_basic', userSpace.dbUser.Lang))
         _ = gnuTrans.gettext
         pair = '{}: {}'
-        text = _('ASK_CONFIRMATION')
-        text += '\n' + pair.format(_('FIRST_NAME'), self._firstName)
-        text += '\n' + pair.format(_('LAST_NAME'), self._lastName)
-        text += '\n' + pair.format(_('PHONE'), self._phone)
+        text = GetStr(self._baleId, 'cmds_basic', 'ASK_CONFIRMATION')
+        text += '\n' + pair.format(
+            GetStr(self._baleId, 'cmds_basic', 'FIRST_NAME'),
+            self._firstName)
+        text += '\n' + pair.format(
+            GetStr(self._baleId, 'cmds_basic', 'LAST_NAME'),
+            self._lastName)
+        text += '\n' + pair.format(
+            GetStr(self._baleId, 'cmds_basic', 'PHONE'),
+            self._phone)
         buttons = InlineKeyboardMarkup()
         buttons.add(self._GetConfirmBtn())
         buttons.add(self._GetRestartBtn())
@@ -183,28 +193,22 @@ class SigninWiz(AbsWizard):
     
     def _GetRestartBtn(self) -> InlineKeyboardButton:
         """Gets 'Restart' button."""
-        global botVars
-        gnuTrans = botVars.pDomains.GetItem(DomainLang(
-            'cmds',
-            botVars.pUsers.GetItemBypass(self._baleId).dbUser.Lang))
-        _ = gnuTrans.gettext
         return InlineKeyboardButton(
-            _('RESTART'),
+            botVars.pDomains.GetStr(self._baleId, 'cmds', 'RESTART'),
             callback_data=f'{self.Uwid}-{self._RESTART_CBD}')
 
     def _GetConfirmBtn(self) -> InlineKeyboardButton:
-        global botVars
-        gnuTrans = botVars.pDomains.GetItem(DomainLang(
-            'cmds',
-            botVars.pUsers.GetItemBypass(self._baleId).dbUser.Lang))
-        _ = gnuTrans.gettext
         return InlineKeyboardButton(
-            _('CONFIRM'),
+            botVars.pDomains.GetStr(self._baleId, 'cmds', 'CONFIRM'),
             callback_data=f'{self.Uwid}-{self._CONFIRM_CBD}')
 
 
 class LangWiz(AbsWizard):
     CMD = '/lang'
+
+    @classmethod
+    def GetDescr(cls, bale_id: ID) -> str:
+        return super().GetDescr(bale_id)
 
     def __init__(
             self,
