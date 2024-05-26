@@ -2,10 +2,12 @@
 # 
 #
 
+from collections.abc import Awaitable
 import gettext
 import logging
+from operator import call
 
-from bale import InlineKeyboardButton, InlineKeyboardMarkup
+from bale import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 import lang.cmds.basic as basic_strs
 from utils.types import (
@@ -216,9 +218,33 @@ class LangWiz(AbsWizard):
             uw_id: str,
             cancel: CancelType = CancelType.ALLOWED,
             ) -> None:
+        from typing import MutableMapping
         super().__init__(bale_id, uw_id)
         self._cancelType = cancel
+        self._langStrs: MutableMapping[str, str] = {}
     
     @property
     def Cancelable(self) -> CancelType:
         return self._cancelType
+
+    async def Start(self) -> WizardRes:
+        from . import IterLangs
+        global botVars
+
+    async def _PrintLangs(self) -> Awaitable[Message]:
+        from . import IterLangs
+        global botVars
+        texts = list[str]()
+        buttons = InlineKeyboardMarkup()
+        for row, lang in enumerate(IterLangs(), 1):
+            if not self._langStrs:
+                self._langStrs[lang.langCode.lower()] = lang.langCode
+                self._langStrs[lang.langName.lower()] = lang.langCode
+            texts.append(lang.selectMsg)
+            buttons.add(
+                InlineKeyboardButton(
+                    text=lang.langName,
+                    callback_data=f'{self.Uwid}-{lang.langCode}'),
+                row)
+        if texts:
+            botVars.bot.send_message()

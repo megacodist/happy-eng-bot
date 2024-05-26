@@ -121,22 +121,6 @@ def _DoOtherInit() -> None:
 		localedir=botVars.LOCALES_DIR,
 		languages=[botVars.defaultLang,],)
 	_ = botLang.gettext
-	#
-	botVars.langs = _GetLangs()
-
-
-def _GetLangs() -> tuple[str, ...]:
-	global botVars
-	langs = []
-	localesDir = botVars.BOT_DIR / botVars.LOCALES_DIR
-	if localesDir.is_dir():
-		for entry in localesDir.iterdir():
-			lang_dir = entry / 'LC_MESSAGES'
-			if lang_dir.is_dir():
-				mo_files = list(lang_dir.glob('*.mo'))
-				if mo_files:
-					langs.append(entry.name)
-	return tuple(langs)
 
 
 async def _DispatchInput(

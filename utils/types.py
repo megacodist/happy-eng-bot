@@ -768,12 +768,34 @@ class BotVars(object, metaclass=singleton.SingletonMeta):
     defaultLang: str
     """The default language of the Bot."""
 
-    langs: tuple[str, ...]
-    """A tuple of all supported languages."""
-
     def __init__(self) -> None:
         self.pUsers = UserPool(del_timint=self.MIN_USER_LS)
         self.pDomains = DomainPool(del_timint=self.MIN_USER_LS)
+        self._langs: tuple[str, ...]
+    
+    @property
+    def langs(self) -> tuple[str, ...]:
+        """Gets a tuple of all supported languages."""
+        try:
+            return self._langs
+        except AttributeError:
+            return self.GetLangs()
+    
+    def GetLangs(self) -> tuple[str, ...]:
+        """Scans for all installed languages, saves them to `langs` property
+         and returns them as a tuple.
+         """
+        langs = []
+        localesDir = self.BOT_DIR / self.LOCALES_DIR
+        if localesDir.is_dir():
+            for entry in localesDir.iterdir():
+                lang_dir = entry / 'LC_MESSAGES'
+                if lang_dir.is_dir():
+                    mo_files = list(lang_dir.glob('*.mo'))
+                    if mo_files:
+                        langs.append(entry.name)
+        self._langs = tuple(langs)
+        return self._langs
 
 
 botVars = BotVars()
