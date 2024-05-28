@@ -5,13 +5,11 @@
 from collections.abc import Awaitable
 import gettext
 import logging
-from operator import call
 
 from bale import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-import lang.cmds.basic as basic_strs
 from utils.types import (
-    AbsPage, AbsWizard, CancelType, DomainLang, BotVars, ID, TextInput, UserSpace,
+    AbsPage, AbsWizard, CancelType, CbInput, DomainLang, BotVars, ID, TextInput, UserSpace,
     WizardRes)
 
 
@@ -92,15 +90,14 @@ class SigninWiz(AbsWizard):
         global botVars
         basicTrans: gettext.GNUTranslations
         # Processing input --------------------------------
-        lastInput = botVars.pUsers[self._baleId].GetFirstInput()
-        if not isinstance(lastInput, TextInput):
-            logging.error('E3-2', stack_info=True)
-            return WizardRes(None, False)
+        firstInput = botVars.pUsers[self._baleId].GetFirstInput()
+        if not isinstance(firstInput, TextInput):
+            return self.LogReplyError(firstInput.bale_msg, True, 'E3-2')
         buttons = InlineKeyboardMarkup()
         userSpace = botVars.pUsers.GetItemBypass(self._baleId)
         GetStr = botVars.pDomains.GetStr
         if self._firstName is None:
-            self._firstName = lastInput.text
+            self._firstName = firstInput.text
             buttons.add(self._GetRestartBtn())
             return WizardRes(
                 self.Reply(
@@ -113,7 +110,7 @@ class SigninWiz(AbsWizard):
                     components=buttons),
                 False)
         elif self._lastName is None:
-            self._lastName = lastInput.text
+            self._lastName = firstInput.text
             buttons.add(self._GetRestartBtn())
             return WizardRes(
                 self.Reply(
@@ -127,7 +124,7 @@ class SigninWiz(AbsWizard):
                 False)
         elif self._phone is None:
             # Saving data to 'phone'...
-            self._phone = lastInput.text
+            self._phone = firstInput.text
             # Confirming all data...
             return await self._Confirm()
         else:
@@ -141,11 +138,10 @@ class SigninWiz(AbsWizard):
         gnuTrans: gettext.GNUTranslations
         # Replying ----------------------------------------
         userSpace = botVars.pUsers.GetItemBypass(self._baleId)
-        lastInput = userSpace.GetFirstInput()
-        if not isinstance(lastInput, CbInput):
-            logging.error('E3-3', stack_info=True)
-            return WizardRes(None, False)
-        match lastInput.cb:
+        firstInput = userSpace.GetFirstInput()
+        if not isinstance(firstInput, CbInput):
+            return self.LogReplyError(firstInput.bale_msg, True, 'E3-3')
+        match firstInput.cb:
             case self._CONFIRM_CBD:
                 userSpace.dbUser.FirstName = self._firstName # type:ignore
                 userSpace.dbUser.LastName = self._lastName # type:ignore
@@ -157,7 +153,7 @@ class SigninWiz(AbsWizard):
                 self._phone = None
                 return await self.Start()
             case _:
-                logging.error(f'{lastInput.cb}:')
+                logging.error(f'{firstInput.cb}:')
                 return WizardRes(None, False,)
     
     async def _Confirm(self) -> WizardRes:
@@ -228,23 +224,71 @@ class LangWiz(AbsWizard):
         return self._cancelType
 
     async def Start(self) -> WizardRes:
-        from . import IterLangs
         global botVars
+        return WizardRes(
+            self.Reply(self._PrintLangs),
+            False)
+    
+    async def ReplyText(self) -> WizardRes:
+        # Declaring variables -----------------------------
+        global botVars
+        userSpace = botVars.pUsers.GetItemBypass(self._baleId)
+        firstInput = userSpace.GetFirstInput()
+        GetStr = botVars.pDomains.GetStr
+        # Replying ----------------------------------------
+        if not isinstance(firstInput, TextInput):
+            return self.LogReplyError(firstInput.bale_msg, True, 'E5-1')
+        try:
+            langCode = self._langStrs[firstInput.text.lower()]
+            userSpace.dbUser.Lang = langCode
+            return WizardRes(None, True)
+        except KeyError:
+            return WizardRes(self.GetLastReply(), False)
+    
+    async def ReplyCallback(self) -> WizardRes:
+        # Declaring variables -----------------------------
+        global botVars
+        userSpace = botVars.pUsers.GetItemBypass(self._baleId)
+        firstInput = userSpace.GetFirstInput()
+        GetStr = botVars.pDomains.GetStr
+        # Replying ----------------------------------------
+        if not isinstance(firstInput, CbInput):
+            return self.LogReplyError(firstInput.bale_msg, True, 'E5-2')
+        langCodes = set(self._langStrs.values())
+        match firstInput.cb:
+            case langCode if langCode in langCodes:
+                userSpace.dbUser.Lang = langCode
+                return WizardRes(None, True)
+            case _:
+                return self.LogReplyError(
+                    firstInput.bale_msg,
+                    True,
+                    'E5-3',
+                    firstInput.cb)
 
-    async def _PrintLangs(self) -> Awaitable[Message]:
+    async def _PrintLangs(self) -> Message:
         from . import IterLangs
         global botVars
         texts = list[str]()
+        self._langStrs.clear()
         buttons = InlineKeyboardMarkup()
         for row, lang in enumerate(IterLangs(), 1):
-            if not self._langStrs:
-                self._langStrs[lang.langCode.lower()] = lang.langCode
-                self._langStrs[lang.langName.lower()] = lang.langCode
+            self._langStrs[lang.langCode.lower()] = lang.langCode
+            self._langStrs[lang.langName.lower()] = lang.langCode
             texts.append(lang.selectMsg)
             buttons.add(
                 InlineKeyboardButton(
                     text=lang.langName,
                     callback_data=f'{self.Uwid}-{lang.langCode}'),
                 row)
+        userSpace = botVars.pUsers.GetItemBypass(self._baleId)
         if texts:
-            botVars.bot.send_message()
+            return botVars.bot.send_message(
+                userSpace.GetFirstInput().bale_msg.chat_id, # type: ignore
+                '\n'.join(texts),
+                components=buttons)
+        else:
+            logging.error('E4-4', None, stack_info=True)
+            return botVars.bot.send_message(
+                bale_msg.chat_id, # type: ignore
+                'An error occurred:\nE7',)

@@ -18,7 +18,7 @@ import enum
 from functools import partial
 import gettext
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable, Iterable
 import logging
 
 from bale import Bot, Message, User, InlineKeyboardButton, InlineKeyboardMarkup
@@ -331,11 +331,6 @@ class AbsWizard(ABC):
     def Cancelable(self) -> CancelType:
         pass
     
-    @property
-    def LastReply(self) -> partial[Awaitable[Message]] | None:
-        """Gets the last reply of the operation."""
-        return self._lastReply
-    
     def Reply(
             self,
             __coro: Callable[..., Awaitable[Message]] | None,
@@ -347,15 +342,40 @@ class AbsWizard(ABC):
         from functools import partial
         if __coro is None:
             self._lastReply = None
+            return None
         else:
             self._lastReply = partial(__coro, *args, **kwargs)
-        return self.GetLastReply()
+            return self._lastReply()
     
     def GetLastReply(self) -> Awaitable[Message] | None:
+        """Gets the last reply of the operation."""
         if self._lastReply is None:
             return None
         else:
             return self._lastReply()
+    
+    def LogReplyError(
+            self,
+            bale_msg: Message,
+            stack: bool,
+            err_code: str,
+            *err_args: Iterable[Any],
+            ) -> WizardRes:
+        """Logs an error and informs the user about a failed operation.
+        The flag `stack` specifies whether to save the stack traceback
+        (`True`) or exception traceback (`False`).
+        """
+        global botVars
+        GetStr = botVars.pDomains.GetStr
+        if stack:
+            logging.error(err_code, self._baleId, *err_args, stack_info=True)
+        else:
+            logging.error(err_code, self._baleId, *err_args, exc_info=True)
+        return WizardRes(
+                botVars.bot.send_message(
+                    bale_msg.chat_id, # type: ignore
+                    GetStr(self._baleId, 'main', 'ERROR').format(err_code)),
+                True)
     
     @abstractmethod
     async def Start(self)  -> WizardRes:
@@ -462,10 +482,9 @@ class CbInput(AbsInput):
             if res.reply is not None:
                 await userSpace.AppendOutput(res.reply)
         else:
-            gnuTrans = botVars.pDomains.GetItem(
-                DomainLang('cmds', userSpace.dbUser.Lang))
-            _ = gnuTrans.gettext
-            await userSpace.AppendOutput(self.bale_msg.reply(_('EXPIRED_CB')))
+            GetStr = botVars.pDomains.GetStr
+            await userSpace.AppendOutput(self.bale_msg.reply(
+                GetStr(self.bale_id, 'cmds', 'EXPIRED_CB')))
 
 
 class CmdInput(AbsInput):

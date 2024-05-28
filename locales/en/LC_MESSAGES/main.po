@@ -26,7 +26,7 @@ msgid "SELECT_LANG"
 msgstr "Select your prefered language:"
 
 msgid "ERROR"
-msgstr "An error occurred:\n{}"
+msgstr "An error occurred: {}\nIf this error persists, please contact Customer Service."
 
 # Indicating that `content` attribute of Bale message is `None`...
 #: main.py:174
